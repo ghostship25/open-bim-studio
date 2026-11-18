@@ -1,0 +1,40 @@
+text route: true 
+direct route: true 
+text levels: 1
+direct levels: 1
+text level name: Ground floor
+direct level name: Ground floor
+text level elevation: 0
+direct level elevation: 0
+text level height: 3
+direct level height: 3
+text types: 1
+direct types: 1
+text type name: Metselwerk-isolatie 150
+direct type name: Metselwerk-isolatie 150
+text type role: 0
+direct type role: 0
+text layers: 2
+direct layers: 2
+text layer 0: Brick
+direct layer 0: Brick
+text layer 0 thickness: 0.1
+direct layer 0 thickness: 0.1
+direct layer 1: Insulation
+direct layer 1 thickness: 0.05
+text walls: 1
+direct walls: 1
+text wall type: 2
+direct wall type: 2
+text wall level: 1
+direct wall level: 1
+text wall start x: 0
+direct wall start x: 0
+text wall finish x: 4
+direct wall finish x: 4
+text wall height: 3
+direct wall height: 3
+text wall base: 0.25
+direct wall base: 0.25
+text wall top: 1
+direct wall top: 1

@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: MPL-2.0
+# The direct IfcX construction (#161, step 3) builds the same model as the
+# text route: one level, a wall type with two layers, and a wall carrying a
+# base offset and a top level. The two routes are compared field by field,
+# not byte for byte.
+import bim/bim_index.dl
+import exchange/ifcx/bim_ifcx.dl
+import exchange/ifcx/bim_ifcx_read.dl
+import exchange/ifcx/bim_ifcx_model.dl
+
+set modelValue to an empty bim model
+set target to the address of modelValue
+set storey to add bim level named (the string form of "Ground floor") at 0.0 with height 3.0 to target
+set layers to an empty list of a bim layer record
+append (@intrinsic("construct", a bim layer record, (the string form of "Brick"), 0.1)) to layers
+append (@intrinsic("construct", a bim layer record, (the string form of "Insulation"), 0.05)) to layers
+set wallType to add bim wall type named (the string form of "Baksteen") with layers to target
+set wall to add bim wall typed wallType on storey from (a cad vector2 with x 0.0 and y 0.0) to (a cad vector2 with x 4.0 and y 0.0) to target
+set wallRecord to the item at 0 in (modelValue's walls's values)
+replace item at index 0 in (modelValue's walls's values) with (@intrinsic("construct", a bim wall record, wallRecord's id, wallRecord's typeId, wallRecord's levelId, wallRecord's start, wallRecord's finish, wallRecord's height, wallRecord's bulge, wallRecord's lean, wallRecord's rise, 0.25, storey))
+
+set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
+set native to the bim native text of ifcx exportText
+set fromText to the bim model parsed from native's text
+set fromDirect to the bim ifcx model of exportText
+
+print ((the string form of "text route: ") + ((the string form of fromText's valid) + ((the string form of " ") + fromText's message))) as a line
+print ((the string form of "direct route: ") + ((the string form of fromDirect's valid) + ((the string form of " ") + fromDirect's message))) as a line
+
+set textModel to fromText's modelValue
+set directModel to fromDirect's modelValue
+set textLevel to the item at 0 in (textModel's levels's values)
+set directLevel to the item at 0 in (directModel's levels's values)
+print ((the string form of "text levels: ") + (the string form of (the length of (textModel's levels's values)))) as a line
+print ((the string form of "direct levels: ") + (the string form of (the length of (directModel's levels's values)))) as a line
+print ((the string form of "text level name: ") + textLevel's name) as a line
+print ((the string form of "direct level name: ") + directLevel's name) as a line
+print ((the string form of "text level elevation: ") + (the string form of textLevel's elevation)) as a line
+print ((the string form of "direct level elevation: ") + (the string form of directLevel's elevation)) as a line
+print ((the string form of "text level height: ") + (the string form of textLevel's height)) as a line
+print ((the string form of "direct level height: ") + (the string form of directLevel's height)) as a line
+
+set textType to the item at 0 in (textModel's wallTypes's values)
+set directType to the item at 0 in (directModel's wallTypes's values)
+set textLayer0 to the item at 0 in (textType's layers's values)
+set directLayer0 to the item at 0 in (directType's layers's values)
+set directLayer1 to the item at 1 in (directType's layers's values)
+print ((the string form of "text types: ") + (the string form of (the length of (textModel's wallTypes's values)))) as a line
+print ((the string form of "direct types: ") + (the string form of (the length of (directModel's wallTypes's values)))) as a line
+print ((the string form of "text type name: ") + textType's name) as a line
+print ((the string form of "direct type name: ") + directType's name) as a line
+print ((the string form of "text type role: ") + (the string form of textType's role)) as a line
+print ((the string form of "direct type role: ") + (the string form of directType's role)) as a line
+print ((the string form of "text layers: ") + (the string form of (the length of (textType's layers's values)))) as a line
+print ((the string form of "direct layers: ") + (the string form of (the length of (directType's layers's values)))) as a line
+print ((the string form of "text layer 0: ") + textLayer0's material) as a line
+print ((the string form of "direct layer 0: ") + directLayer0's material) as a line
+print ((the string form of "text layer 0 thickness: ") + (the string form of textLayer0's thickness)) as a line
+print ((the string form of "direct layer 0 thickness: ") + (the string form of directLayer0's thickness)) as a line
+print ((the string form of "direct layer 1: ") + directLayer1's material) as a line
+print ((the string form of "direct layer 1 thickness: ") + (the string form of directLayer1's thickness)) as a line
+
+set textWall to the item at 0 in (textModel's walls's values)
+set directWall to the item at 0 in (directModel's walls's values)
+set textStart to textWall's start
+set textFinish to textWall's finish
+set directStart to directWall's start
+set directFinish to directWall's finish
+print ((the string form of "text walls: ") + (the string form of (the length of (textModel's walls's values)))) as a line
+print ((the string form of "direct walls: ") + (the string form of (the length of (directModel's walls's values)))) as a line
+print ((the string form of "text wall type: ") + (the string form of textWall's typeId)) as a line
+print ((the string form of "direct wall type: ") + (the string form of directWall's typeId)) as a line
+print ((the string form of "text wall level: ") + (the string form of textWall's levelId)) as a line
+print ((the string form of "direct wall level: ") + (the string form of directWall's levelId)) as a line
+print ((the string form of "text wall start x: ") + (the string form of textStart's x)) as a line
+print ((the string form of "direct wall start x: ") + (the string form of directStart's x)) as a line
+print ((the string form of "text wall finish x: ") + (the string form of textFinish's x)) as a line
+print ((the string form of "direct wall finish x: ") + (the string form of directFinish's x)) as a line
+print ((the string form of "text wall height: ") + (the string form of textWall's height)) as a line
+print ((the string form of "direct wall height: ") + (the string form of directWall's height)) as a line
+print ((the string form of "text wall base: ") + (the string form of textWall's baseOffset)) as a line
+print ((the string form of "direct wall base: ") + (the string form of directWall's baseOffset)) as a line
+print ((the string form of "text wall top: ") + (the string form of textWall's topLevelId)) as a line
+print ((the string form of "direct wall top: ") + (the string form of directWall's topLevelId)) as a line

@@ -1,0 +1,274 @@
+# SPDX-License-Identifier: MPL-2.0
+# Builds a model straight from an IfcX document's `openbim::` records, without
+# writing `.bim` text for the text parser to read back (#161, step 3).
+#
+# The first group covers the frame and the wall set: the project's `next`, a
+# level, a wall type with its layers, and a wall with its base offset and top
+# level. A record kind this module does not build yet is refused by name, so
+# content is never silently dropped.
+#
+# Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
+# a level has a positive height, a wall type has at least one layer of positive
+# thickness, a wall stays inside its own bulge, lean and rise. The finished
+# model is checked once by `the bim reference fault of`, exactly as the text
+# reader checks it, and its type names follow the naming rules.
+import lib/json.dl
+import bim/bim_index.dl
+import exchange/ifcx/bim_readings.dl
+
+class:
+    patterns:
+        [a|] bim ifcx model result record
+    members:
+        valid as a boolean
+        modelValue as a bim model record
+        message as a string
+
+local function a bim ifcx model refusal saying {a string:reason}:
+    execute:
+        return @intrinsic("construct", a bim ifcx model result record, false, an empty bim model, reason)
+
+# The JSON member `key` of `record`, or no value when it has none.
+local function the bim ifcx model member {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        if (the kind of record) = the JSON object kind:
+            if record has JSON member named key:
+                return the JSON member named key in record
+        return 0 as a pointer to a JSON value
+
+local function the bim ifcx model whole {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
+        if (the kind of entry) != the JSON number kind:
+            return @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
+        return the bim whole reading of (the text of entry)
+
+local function the bim ifcx model real {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        if (the kind of entry) != the JSON number kind:
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        return the bim real reading of (the text of entry)
+
+# A text field: line breaks become spaces, as the native file writes them.
+local function the bim ifcx model text {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return the string form of ""
+        if (the kind of entry) = the JSON text kind:
+            return ((the text of entry) with "\n" replaced by " ") with "\r" replaced by " "
+        return the string form of ""
+
+# True when `wanted` is above the last id of `records`, so `records` stays in
+# ascending id order.
+local function bim ifcx model id {a 64 bit integer:wanted} follows {a pointer to a list:records}:
+    execute:
+        if (the length of records) = 0:
+            return true
+        return (the item at ((the length of records) - 1) in records)'s id < wanted
+
+# The numbers of an array of numbers (`[x, y]`), or 0 for both when it is not
+# one.
+local function the bim ifcx model pair {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set pairValue to @intrinsic("construct", a bim real reading record, true, 0.0)
+        set otherValue to @intrinsic("construct", a bim real reading record, true, 0.0)
+        set entry to the bim ifcx model member key of record
+        if entry != (0 as a pointer to a JSON value):
+            if (the kind of entry) = the JSON array kind:
+                if (the length of entry) = 2:
+                    set pairValue to the bim real reading of (the text of (the JSON value at index 0 in entry))
+                    set otherValue to the bim real reading of (the text of (the JSON value at index 1 in entry))
+        if (pairValue's valid and otherValue's valid) = false:
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        return pairValue
+
+local function the bim ifcx model second of {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        if (the kind of entry) != the JSON array kind:
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        if (the length of entry) != 2:
+            return @intrinsic("construct", a bim real reading record, false, 0.0)
+        return the bim real reading of (the text of (the JSON value at index 1 in entry))
+
+# ---------------------------------------------------------------- the records
+
+local function add bim ifcx model level {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set elevation to the bim ifcx model real (the string form of "elevation") of record
+        set height to the bim ifcx model real (the string form of "height") of record
+        if ((id's valid and elevation's valid) and height's valid) = false:
+            return the string form of "malformed level"
+        if (bim ifcx model id id's value follows (modelValue's levels's values)) = false:
+            return the string form of "level ids out of order"
+        if height's value <= 0.0:
+            return the string form of "a level needs a positive height"
+        append (@intrinsic("construct", a bim level record, id's value, (the bim ifcx model text (the string form of "name") of record), elevation's value, height's value)) to (modelValue's levels's values)
+        return the string form of ""
+
+local function add bim ifcx model wall type {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        if id's valid = false:
+            return the string form of "malformed walltype"
+        if (bim ifcx model id id's value follows (modelValue's wallTypes's values)) = false:
+            return the string form of "walltype ids out of order"
+        set role to bim wall planar role
+        set roleText to the bim ifcx model text (the string form of "role") of record
+        if (the length of roleText) > 0:
+            set roleReading to the bim whole reading of roleText
+            if roleReading's valid = false:
+                return the string form of "malformed planartype"
+            if ((roleReading's value < (1 as a 64 bit integer)) or (roleReading's value > (3 as a 64 bit integer))):
+                return the string form of "a planar type's role is 1, 2 or 3"
+            set role to roleReading's value as an integer
+        set typeValue to @intrinsic("construct", a bim wall type record, id's value, (the bim ifcx model text (the string form of "name") of record), a cad topology list of a bim layer record, role)
+        append typeValue to (modelValue's wallTypes's values)
+        set layersEntry to the bim ifcx model member (the string form of "layers") of record
+        if layersEntry != (0 as a pointer to a JSON value):
+            if (the kind of layersEntry) = the JSON array kind:
+                set owner to (the item at ((the length of (modelValue's wallTypes's values)) - 1) in (modelValue's wallTypes's values))
+                loop cursor from 0 to the length of layersEntry:
+                    set layerEntry to the JSON value at index cursor in layersEntry
+                    set usable to false
+                    if (the kind of layerEntry) = the JSON array kind:
+                        set usable to (the length of layerEntry) = 2
+                    if usable:
+                        set material to the JSON value at index 0 in layerEntry
+                        if (the kind of material) != the JSON text kind:
+                            return the string form of "malformed layer"
+                        set thickness to the bim real reading of (the text of (the JSON value at index 1 in layerEntry))
+                        if (thickness's valid = false) or (thickness's value <= 0.0):
+                            return the string form of "a layer needs a positive thickness"
+                        append (@intrinsic("construct", a bim layer record, (the text of material), thickness's value)) to (owner's layers's values)
+                    else:
+                        return the string form of "malformed layer"
+        return the string form of ""
+
+local function add bim ifcx model wall {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set typeId to the bim ifcx model whole (the string form of "type") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set height to the bim ifcx model real (the string form of "height") of record
+        set bulge to the bim ifcx model real (the string form of "bulge") of record
+        if ((((id's valid and typeId's valid) and levelId's valid) and height's valid) and bulge's valid) = false:
+            return the string form of "malformed wall"
+        set startReading to the bim ifcx model member (the string form of "start") of record
+        set finishReading to the bim ifcx model member (the string form of "finish") of record
+        set startX to @intrinsic("construct", a bim real reading record, false, 0.0)
+        set startY to startX
+        set finishX to startX
+        set finishY to startX
+        set usable to true
+        if ((the kind of startReading) = the JSON array kind) and ((the length of startReading) = 2):
+            set startX to the bim real reading of (the text of (the JSON value at index 0 in startReading))
+            set startY to the bim real reading of (the text of (the JSON value at index 1 in startReading))
+        else:
+            set usable to false
+        if ((the kind of finishReading) = the JSON array kind) and ((the length of finishReading) = 2):
+            set finishX to the bim real reading of (the text of (the JSON value at index 0 in finishReading))
+            set finishY to the bim real reading of (the text of (the JSON value at index 1 in finishReading))
+        else:
+            set usable to false
+        if usable = false:
+            return the string form of "malformed wall"
+        if (((startX's valid and startY's valid) and finishX's valid) and finishY's valid) = false:
+            return the string form of "malformed wall"
+        if (bim ifcx model id id's value follows (modelValue's walls's values)) = false:
+            return the string form of "wall ids out of order"
+        set startPoint to a cad vector2 with x startX's value and y startY's value
+        set finishPoint to a cad vector2 with x finishX's value and y finishY's value
+        set lean to the bim ifcx model real (the string form of "lean") of record
+        set rise to the bim ifcx model real (the string form of "rise") of record
+        set baseOffset to the bim ifcx model real (the string form of "baseOffset") of record
+        set topLevelId to the bim refused id
+        set topEntry to the bim ifcx model member (the string form of "topLevel") of record
+        if topEntry != (0 as a pointer to a JSON value):
+            set topReading to @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
+            if ((the kind of topEntry) = the JSON number kind) or ((the kind of topEntry) = the JSON text kind):
+                set topReading to the bim whole reading of (the text of topEntry)
+            if topReading's valid = false:
+                return the string form of "malformed walltop"
+            set topLevelId to topReading's value
+        set leanValue to 0.0
+        if lean's valid:
+            set leanValue to lean's value
+        set riseValue to 0.0
+        if rise's valid:
+            set riseValue to rise's value
+        set baseValue to 0.0
+        if baseOffset's valid:
+            set baseValue to baseOffset's value
+        set span to the cad distance from startPoint to finishPoint
+        if (span <= 1e-6) or (height's value <= 0.0):
+            return the string form of "a wall needs a length and a positive height"
+        if (the absolute value of bulge's value) > (span * 0.5):
+            return the string form of "a wall's bulge exceeds a half circle"
+        if ((the absolute value of leanValue) >= height's value) or ((the absolute value of riseValue) >= height's value):
+            return the string form of "a wall's lean or rise reaches its height"
+        append (@intrinsic("construct", a bim wall record, id's value, typeId's value, levelId's value, startPoint, finishPoint, height's value, bulge's value, leanValue, riseValue, baseValue, topLevelId)) to (modelValue's walls's values)
+        return the string form of ""
+
+# ---------------------------------------------------------------- the document
+
+# The model in the IfcX document `content` (JSON text or its binary encoding),
+# or a refusal naming the fault.
+function the bim ifcx model of {a string:content}:
+    execute:
+        set parsed to the JSON document parsed from content
+        if parsed failed:
+            return a bim ifcx model refusal saying ((the string form of "not IfcX at byte ") + (the string form of (the JSON error position in parsed)))
+        set document to the value of parsed
+        set dataFound to false
+        if (the kind of document) = the JSON object kind:
+            set dataFound to document has JSON member named "data"
+        if dataFound = false:
+            free parsed
+            return a bim ifcx model refusal saying (the string form of "not an IfcX file")
+        set data to the JSON member named "data" in document
+        set modelValue to an empty bim model
+        set fault to the string form of ""
+        loop cursor from 0 to the length of data:
+            set node to the JSON value at index cursor in data
+            set attributesFound to false
+            if (the kind of node) = the JSON object kind:
+                set attributesFound to node has JSON member named "attributes"
+            if attributesFound:
+                set group to the JSON member named "attributes" in node
+                if (the kind of group) = the JSON object kind:
+                    loop member from 0 to the length of group:
+                        if (the length of fault) = 0:
+                            set entry to the item at member in (group's members)
+                            set record to entry's value
+                            if entry's name = (the string form of "openbim::project"):
+                                set nextReading to the bim ifcx model whole (the string form of "next") of record
+                                if nextReading's valid:
+                                    set modelValue's nextId to nextReading's value
+                            else if entry's name = (the string form of "openbim::level"):
+                                set fault to (add bim ifcx model level record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::walltype"):
+                                set fault to (add bim ifcx model wall type record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::wall"):
+                                set fault to (add bim ifcx model wall record into (the address of modelValue))
+                            else if (the length of entry's name) > 8:
+                                if (the substring of entry's name from 0 spanning 8 bytes) = (the string form of "openbim::"):
+                                    set fault to ((the string form of "not built yet: ") + entry's name)
+        free parsed
+        if (the length of fault) > 0:
+            return a bim ifcx model refusal saying fault
+        set problem to the bim reference fault of modelValue
+        if (the length of problem) > 0:
+            return a bim ifcx model refusal saying problem
+        # Type names follow the naming rules, whatever a document says.
+        name bim types by the rules in (the address of modelValue)
+        return @intrinsic("construct", a bim ifcx model result record, true, modelValue, the string form of "")
