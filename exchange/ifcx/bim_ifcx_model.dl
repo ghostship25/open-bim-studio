@@ -237,6 +237,7 @@ function the bim ifcx model of {a string:content}:
             return a bim ifcx model refusal saying (the string form of "not an IfcX file")
         set data to the JSON member named "data" in document
         set modelValue to an empty bim model
+        set openbimPrefix to the string form of "openbim::"
         set fault to the string form of ""
         loop cursor from 0 to the length of data:
             set node to the JSON value at index cursor in data
@@ -260,8 +261,8 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model wall type record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::wall"):
                                 set fault to (add bim ifcx model wall record into (the address of modelValue))
-                            else if (the length of entry's name) > 8:
-                                if (the substring of entry's name from 0 spanning 8 bytes) = (the string form of "openbim::"):
+                            else if (the length of entry's name) > (the length of openbimPrefix):
+                                if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
         free parsed
         if (the length of fault) > 0:

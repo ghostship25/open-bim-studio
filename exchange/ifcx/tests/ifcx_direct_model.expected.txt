@@ -38,3 +38,4 @@ text wall base: 0.25
 direct wall base: 0.25
 text wall top: 1
 direct wall top: 1
+refused kind: false not built yet: openbim::opening

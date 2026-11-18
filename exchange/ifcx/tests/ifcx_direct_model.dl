@@ -82,3 +82,8 @@ print ((the string form of "text wall base: ") + (the string form of textWall's 
 print ((the string form of "direct wall base: ") + (the string form of directWall's baseOffset)) as a line
 print ((the string form of "text wall top: ") + (the string form of textWall's topLevelId)) as a line
 print ((the string form of "direct wall top: ") + (the string form of directWall's topLevelId)) as a line
+
+# A record kind this module does not build yet is refused by name, not dropped.
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::opening\":{}}}]}"
+set fromRefused to the bim ifcx model of refusedDocument
+print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
