@@ -19,6 +19,25 @@ set wall to add bim wall typed wallType on storey from (a cad vector2 with x 0.0
 set wallRecord to the item at 0 in (modelValue's walls's values)
 replace item at index 0 in (modelValue's walls's values) with (@intrinsic("construct", a bim wall record, wallRecord's id, wallRecord's typeId, wallRecord's levelId, wallRecord's start, wallRecord's finish, wallRecord's height, wallRecord's bulge, wallRecord's lean, wallRecord's rise, 0.25, storey))
 
+# The next group of kinds: a slab, a plate of the wall type, an opening type
+# with its opening, and a grid line.
+set outline to an empty list of a cad vector2
+append (a cad vector2 with x -1.0 and y -1.0) to outline
+append (a cad vector2 with x 5.0 and y -1.0) to outline
+append (a cad vector2 with x 5.0 and y 3.0) to outline
+append (a cad vector2 with x -1.0 and y 3.0) to outline
+ignore add bim slab on storey around outline thick 0.2 to target
+free outline
+set plateOutline to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (plateOutline's values)
+append (a cad vector2 with x 3.0 and y 0.0) to (plateOutline's values)
+append (a cad vector2 with x 3.0 and y 2.0) to (plateOutline's values)
+set plateId to the bim new id in target
+append (@intrinsic("construct", a bim slab record, plateId, storey, plateOutline, 0.15, (the string form of "concrete"), wallType, 0.5, 0.0, 0.0)) to (modelValue's slabs's values)
+set windowType to add bim opening type named (the string form of "Raam 900x1200") sized 0.9 by 1.2 with sill 0.9 and frame 0.05 to target
+ignore add bim opening typed windowType in wallRecord's id at 1.5 to target
+ignore add bim grid named (the string form of "A") from (a cad vector2 with x -1.0 and y -1.0) to (a cad vector2 with x -1.0 and y 4.0) reaching -1.0 to 4.0 to target
+
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
 set fromText to the bim model parsed from native's text
@@ -83,7 +102,93 @@ print ((the string form of "direct wall base: ") + (the string form of directWal
 print ((the string form of "text wall top: ") + (the string form of textWall's topLevelId)) as a line
 print ((the string form of "direct wall top: ") + (the string form of directWall's topLevelId)) as a line
 
+set textOpeningType to the item at 0 in (textModel's openingTypes's values)
+set directOpeningType to the item at 0 in (directModel's openingTypes's values)
+print ((the string form of "text opening types: ") + (the string form of (the length of (textModel's openingTypes's values)))) as a line
+print ((the string form of "direct opening types: ") + (the string form of (the length of (directModel's openingTypes's values)))) as a line
+print ((the string form of "text opening type id: ") + (the string form of textOpeningType's id)) as a line
+print ((the string form of "direct opening type id: ") + (the string form of directOpeningType's id)) as a line
+print ((the string form of "text opening type name: ") + textOpeningType's name) as a line
+print ((the string form of "direct opening type name: ") + directOpeningType's name) as a line
+print ((the string form of "text opening type width: ") + (the string form of textOpeningType's width)) as a line
+print ((the string form of "direct opening type width: ") + (the string form of directOpeningType's width)) as a line
+print ((the string form of "text opening type height: ") + (the string form of textOpeningType's height)) as a line
+print ((the string form of "direct opening type height: ") + (the string form of directOpeningType's height)) as a line
+print ((the string form of "text opening type sill: ") + (the string form of textOpeningType's sill)) as a line
+print ((the string form of "direct opening type sill: ") + (the string form of directOpeningType's sill)) as a line
+print ((the string form of "text opening type frame: ") + (the string form of textOpeningType's frame)) as a line
+print ((the string form of "direct opening type frame: ") + (the string form of directOpeningType's frame)) as a line
+print ((the string form of "text opening type door: ") + (the string form of textOpeningType's isDoor)) as a line
+print ((the string form of "direct opening type door: ") + (the string form of directOpeningType's isDoor)) as a line
+
+set textOpening to the item at 0 in (textModel's openings's values)
+set directOpening to the item at 0 in (directModel's openings's values)
+print ((the string form of "text openings: ") + (the string form of (the length of (textModel's openings's values)))) as a line
+print ((the string form of "direct openings: ") + (the string form of (the length of (directModel's openings's values)))) as a line
+print ((the string form of "text opening id: ") + (the string form of textOpening's id)) as a line
+print ((the string form of "direct opening id: ") + (the string form of directOpening's id)) as a line
+print ((the string form of "text opening type: ") + (the string form of textOpening's typeId)) as a line
+print ((the string form of "direct opening type: ") + (the string form of directOpening's typeId)) as a line
+print ((the string form of "text opening host: ") + (the string form of textOpening's hostId)) as a line
+print ((the string form of "direct opening host: ") + (the string form of directOpening's hostId)) as a line
+print ((the string form of "text opening offset: ") + (the string form of textOpening's offset)) as a line
+print ((the string form of "direct opening offset: ") + (the string form of directOpening's offset)) as a line
+
+set textSlab to the item at 0 in (textModel's slabs's values)
+set directSlab to the item at 0 in (directModel's slabs's values)
+set textPlate to the item at 1 in (textModel's slabs's values)
+set directPlate to the item at 1 in (directModel's slabs's values)
+set textCorner to the item at 0 in (textSlab's outline's values)
+set directCorner to the item at 0 in (directSlab's outline's values)
+print ((the string form of "text slabs: ") + (the string form of (the length of (textModel's slabs's values)))) as a line
+print ((the string form of "direct slabs: ") + (the string form of (the length of (directModel's slabs's values)))) as a line
+print ((the string form of "text slab id: ") + (the string form of textSlab's id)) as a line
+print ((the string form of "direct slab id: ") + (the string form of directSlab's id)) as a line
+print ((the string form of "text slab level: ") + (the string form of textSlab's levelId)) as a line
+print ((the string form of "direct slab level: ") + (the string form of directSlab's levelId)) as a line
+print ((the string form of "text slab thickness: ") + (the string form of textSlab's thickness)) as a line
+print ((the string form of "direct slab thickness: ") + (the string form of directSlab's thickness)) as a line
+print ((the string form of "text slab material: ") + textSlab's material) as a line
+print ((the string form of "direct slab material: ") + directSlab's material) as a line
+print ((the string form of "text slab type: ") + (the string form of textSlab's typeId)) as a line
+print ((the string form of "direct slab type: ") + (the string form of directSlab's typeId)) as a line
+print ((the string form of "text slab corners: ") + (the string form of (the length of (textSlab's outline's values)))) as a line
+print ((the string form of "direct slab corners: ") + (the string form of (the length of (directSlab's outline's values)))) as a line
+print ((the string form of "text slab corner 0 x: ") + (the string form of textCorner's x)) as a line
+print ((the string form of "direct slab corner 0 x: ") + (the string form of directCorner's x)) as a line
+print ((the string form of "text plate id: ") + (the string form of textPlate's id)) as a line
+print ((the string form of "direct plate id: ") + (the string form of directPlate's id)) as a line
+print ((the string form of "text plate type: ") + (the string form of textPlate's typeId)) as a line
+print ((the string form of "direct plate type: ") + (the string form of directPlate's typeId)) as a line
+print ((the string form of "text plate thickness: ") + (the string form of textPlate's thickness)) as a line
+print ((the string form of "direct plate thickness: ") + (the string form of directPlate's thickness)) as a line
+print ((the string form of "text plate top: ") + (the string form of textPlate's top)) as a line
+print ((the string form of "direct plate top: ") + (the string form of directPlate's top)) as a line
+print ((the string form of "text plate heading: ") + (the string form of textPlate's heading)) as a line
+print ((the string form of "direct plate heading: ") + (the string form of directPlate's heading)) as a line
+
+set textGrid to the item at 0 in (textModel's grids's values)
+set directGrid to the item at 0 in (directModel's grids's values)
+set textGridStart to textGrid's start
+set textGridFinish to textGrid's finish
+set directGridStart to directGrid's start
+set directGridFinish to directGrid's finish
+print ((the string form of "text grids: ") + (the string form of (the length of (textModel's grids's values)))) as a line
+print ((the string form of "direct grids: ") + (the string form of (the length of (directModel's grids's values)))) as a line
+print ((the string form of "text grid id: ") + (the string form of textGrid's id)) as a line
+print ((the string form of "direct grid id: ") + (the string form of directGrid's id)) as a line
+print ((the string form of "text grid name: ") + textGrid's name) as a line
+print ((the string form of "direct grid name: ") + directGrid's name) as a line
+print ((the string form of "text grid start x: ") + (the string form of textGridStart's x)) as a line
+print ((the string form of "direct grid start x: ") + (the string form of directGridStart's x)) as a line
+print ((the string form of "text grid finish y: ") + (the string form of textGridFinish's y)) as a line
+print ((the string form of "direct grid finish y: ") + (the string form of directGridFinish's y)) as a line
+print ((the string form of "text grid low: ") + (the string form of textGrid's low)) as a line
+print ((the string form of "direct grid low: ") + (the string form of directGrid's low)) as a line
+print ((the string form of "text grid high: ") + (the string form of textGrid's high)) as a line
+print ((the string form of "direct grid high: ") + (the string form of directGrid's high)) as a line
+
 # A record kind this module does not build yet is refused by name, not dropped.
-set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::opening\":{}}}]}"
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
 print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
