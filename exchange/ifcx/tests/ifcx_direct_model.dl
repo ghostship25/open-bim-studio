@@ -38,6 +38,38 @@ set windowType to add bim opening type named (the string form of "Raam 900x1200"
 ignore add bim opening typed windowType in wallRecord's id at 1.5 to target
 ignore add bim grid named (the string form of "A") from (a cad vector2 with x -1.0 and y -1.0) to (a cad vector2 with x -1.0 and y 4.0) reaching -1.0 to 4.0 to target
 
+# The next group of kinds: two dimensions (one placed, one on paper in a view),
+# a line, a face and a text, and a component of two parts.
+set firstEnd to @intrinsic("construct", a bim reference record, wallRecord's id, bim wall start feature)
+set secondEnd to @intrinsic("construct", a bim reference record, wallRecord's id, bim wall finish feature)
+ignore add bim dimension from firstEnd to secondEnd through (a cad vector2 with x 0.0 and y 1.5) to target
+ignore add bim dimension from firstEnd to secondEnd in view (42 as a 64 bit integer) through (a cad vector2 with x 0.0 and y 2.0) outward (a cad vector2 with x 0.0 and y 1.0) at 250.0 paper millimetres to target
+ignore add bim line on storey from (a cad vector2 with x 0.0 and y 4.0) to (a cad vector2 with x 2.0 and y 4.0) to target
+set faceOutline to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to faceOutline
+append (a cad vector2 with x 2.0 and y 0.0) to faceOutline
+append (a cad vector2 with x 2.0 and y 2.0) to faceOutline
+append (a cad vector2 with x 0.0 and y 2.0) to faceOutline
+ignore add bim face on storey around faceOutline to target
+free faceOutline
+ignore add bim text on storey at (a cad vector2 with x 1.0 and y 5.0) saying (the string form of "Label") to target
+set partFaceId to the bim new id in target
+set partLineId to the bim new id in target
+set parts to an empty list of a bim sketch record
+set partOutline to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (partOutline's values)
+append (a cad vector2 with x 0.5 and y 0.0) to (partOutline's values)
+append (a cad vector2 with x 0.5 and y 0.5) to (partOutline's values)
+append (a cad vector2 with x 0.0 and y 0.5) to (partOutline's values)
+append (@intrinsic("construct", a bim sketch record, partFaceId, 0 as a 64 bit integer, bim face sketch, partOutline, 0.05, (the string form of ""))) to parts
+set partLine to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (partLine's values)
+append (a cad vector2 with x 0.5 and y 0.5) to (partLine's values)
+append (@intrinsic("construct", a bim sketch record, partLineId, 0 as a 64 bit integer, bim line sketch, partLine, 0.0, (the string form of ""))) to parts
+set componentId to add bim component named (the string form of "Frame") to target
+ignore set bim component componentId contents to parts in target
+free parts
+
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
 set fromText to the bim model parsed from native's text
@@ -188,6 +220,127 @@ print ((the string form of "direct grid low: ") + (the string form of directGrid
 print ((the string form of "text grid high: ") + (the string form of textGrid's high)) as a line
 print ((the string form of "direct grid high: ") + (the string form of directGrid's high)) as a line
 
+set textDimensions to textModel's dimensions's values
+set directDimensions to directModel's dimensions's values
+set textPlacedDimension to the item at 0 in textDimensions
+set directPlacedDimension to the item at 0 in directDimensions
+set textPaperDimension to the item at 1 in textDimensions
+set directPaperDimension to the item at 1 in directDimensions
+set textPlace to textPlacedDimension's place
+set directPlace to directPlacedDimension's place
+set textOutward to textPaperDimension's outward
+set directOutward to directPaperDimension's outward
+print ((the string form of "text dimensions: ") + (the string form of (the length of textDimensions))) as a line
+print ((the string form of "direct dimensions: ") + (the string form of (the length of directDimensions))) as a line
+print ((the string form of "text dimension 0 first: ") + ((the string form of textPlacedDimension's first's elementId) + ((the string form of " ") + (the string form of textPlacedDimension's first's feature)))) as a line
+print ((the string form of "direct dimension 0 first: ") + ((the string form of directPlacedDimension's first's elementId) + ((the string form of " ") + (the string form of directPlacedDimension's first's feature)))) as a line
+print ((the string form of "text dimension 0 second: ") + ((the string form of textPlacedDimension's second's elementId) + ((the string form of " ") + (the string form of textPlacedDimension's second's feature)))) as a line
+print ((the string form of "direct dimension 0 second: ") + ((the string form of directPlacedDimension's second's elementId) + ((the string form of " ") + (the string form of directPlacedDimension's second's feature)))) as a line
+print ((the string form of "text dimension 0 placed: ") + (the string form of textPlacedDimension's placed)) as a line
+print ((the string form of "direct dimension 0 placed: ") + (the string form of directPlacedDimension's placed)) as a line
+print ((the string form of "text dimension 0 place x: ") + (the string form of textPlace's x)) as a line
+print ((the string form of "direct dimension 0 place x: ") + (the string form of directPlace's x)) as a line
+print ((the string form of "text dimension 0 place y: ") + (the string form of textPlace's y)) as a line
+print ((the string form of "direct dimension 0 place y: ") + (the string form of directPlace's y)) as a line
+print ((the string form of "text dimension 0 view: ") + (the string form of textPlacedDimension's viewId)) as a line
+print ((the string form of "direct dimension 0 view: ") + (the string form of directPlacedDimension's viewId)) as a line
+print ((the string form of "text dimension 1 paper: ") + (the string form of textPaperDimension's paperOffset)) as a line
+print ((the string form of "direct dimension 1 paper: ") + (the string form of directPaperDimension's paperOffset)) as a line
+print ((the string form of "text dimension 1 outward y: ") + (the string form of textOutward's y)) as a line
+print ((the string form of "direct dimension 1 outward y: ") + (the string form of directOutward's y)) as a line
+print ((the string form of "text dimension 1 view: ") + (the string form of textPaperDimension's viewId)) as a line
+print ((the string form of "direct dimension 1 view: ") + (the string form of directPaperDimension's viewId)) as a line
+
+set textSketches to textModel's sketches's values
+set directSketches to directModel's sketches's values
+set textLineSketch to the item at 0 in textSketches
+set directLineSketch to the item at 0 in directSketches
+set textFaceSketch to the item at 1 in textSketches
+set directFaceSketch to the item at 1 in directSketches
+set textWordSketch to the item at 2 in textSketches
+set directWordSketch to the item at 2 in directSketches
+print ((the string form of "text sketches: ") + (the string form of (the length of textSketches))) as a line
+print ((the string form of "direct sketches: ") + (the string form of (the length of directSketches))) as a line
+set pieces to an empty list of a string
+append (the string form of textLineSketch's kind) to pieces
+append (the string form of textLineSketch's levelId) to pieces
+append (the string form of (the length of (textLineSketch's points's values))) to pieces
+append (the string form of textLineSketch's height) to pieces
+print ((the string form of "text line sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directLineSketch's kind) to pieces
+append (the string form of directLineSketch's levelId) to pieces
+append (the string form of (the length of (directLineSketch's points's values))) to pieces
+append (the string form of directLineSketch's height) to pieces
+print ((the string form of "direct line sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textFaceSketch's kind) to pieces
+append (the string form of (the length of (textFaceSketch's points's values))) to pieces
+append (the string form of textFaceSketch's height) to pieces
+print ((the string form of "text face sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directFaceSketch's kind) to pieces
+append (the string form of (the length of (directFaceSketch's points's values))) to pieces
+append (the string form of directFaceSketch's height) to pieces
+print ((the string form of "direct face sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textWordSketch's kind) to pieces
+append (the string form of (the length of (textWordSketch's points's values))) to pieces
+append (the string form of textWordSketch's height) to pieces
+append textWordSketch's content to pieces
+print ((the string form of "text word sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directWordSketch's kind) to pieces
+append (the string form of (the length of (directWordSketch's points's values))) to pieces
+append (the string form of directWordSketch's height) to pieces
+append directWordSketch's content to pieces
+print ((the string form of "direct word sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+set textComponents to textModel's components's values
+set directComponents to directModel's components's values
+set textComponent to the item at 0 in textComponents
+set directComponent to the item at 0 in directComponents
+set textParts to textComponent's sketches's values
+set directParts to directComponent's sketches's values
+set textPartFace to the item at 0 in textParts
+set directPartFace to the item at 0 in directParts
+set textPartLine to the item at 1 in textParts
+set directPartLine to the item at 1 in directParts
+print ((the string form of "text components: ") + (the string form of (the length of textComponents))) as a line
+print ((the string form of "direct components: ") + (the string form of (the length of directComponents))) as a line
+append (the string form of textComponent's id) to pieces
+append textComponent's name to pieces
+append (the string form of (the length of textParts)) to pieces
+print ((the string form of "text component: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directComponent's id) to pieces
+append directComponent's name to pieces
+append (the string form of (the length of directParts)) to pieces
+print ((the string form of "direct component: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textPartFace's kind) to pieces
+append (the string form of (the length of (textPartFace's points's values))) to pieces
+append (the string form of textPartFace's height) to pieces
+append (the string form of textPartFace's levelId) to pieces
+print ((the string form of "text part face: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directPartFace's kind) to pieces
+append (the string form of (the length of (directPartFace's points's values))) to pieces
+append (the string form of directPartFace's height) to pieces
+append (the string form of directPartFace's levelId) to pieces
+print ((the string form of "direct part face: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textPartLine's kind) to pieces
+append (the string form of (the length of (textPartLine's points's values))) to pieces
+append (the string form of textPartLine's height) to pieces
+print ((the string form of "text part line: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directPartLine's kind) to pieces
+append (the string form of (the length of (directPartLine's points's values))) to pieces
+append (the string form of directPartLine's height) to pieces
+print ((the string form of "direct part line: ") + (pieces joined with " ")) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
 set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
@@ -215,3 +368,12 @@ print ((the string form of "unstarted wall: ") + fromUnstartedWall's message) as
 set badTopWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3,\"bulge\":0,\"topLevel\":\"x\"}}}]}"
 set fromBadTopWall to the bim ifcx model of badTopWall
 print ((the string form of "bad top wall: ") + fromBadTopWall's message) as a line
+
+# The new kinds keep the text parser's words, and their unbuilt members are
+# refused by name.
+set crossedFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::sketch\":{\"id\":1,\"level\":1,\"kind\":1,\"height\":0,\"points\":[[0,0],[1,1],[1,0],[0,1]],\"text\":\"\"}}}]}"
+set fromCrossedFace to the bim ifcx model of crossedFace
+print ((the string form of "crossed face: ") + fromCrossedFace's message) as a line
+set connectedComponent to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"connectors\":[]}}}]}"
+set fromConnectedComponent to the bim ifcx model of connectedComponent
+print ((the string form of "connected component: ") + fromConnectedComponent's message) as a line

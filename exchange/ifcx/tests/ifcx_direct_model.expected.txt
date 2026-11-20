@@ -104,6 +104,42 @@ text grid low: -1
 direct grid low: -1
 text grid high: 4
 direct grid high: 4
+text dimensions: 2
+direct dimensions: 2
+text dimension 0 first: 3 0
+direct dimension 0 first: 3 0
+text dimension 0 second: 3 1
+direct dimension 0 second: 3 1
+text dimension 0 placed: true
+direct dimension 0 placed: true
+text dimension 0 place x: 0
+direct dimension 0 place x: 0
+text dimension 0 place y: 1.5
+direct dimension 0 place y: 1.5
+text dimension 0 view: -1
+direct dimension 0 view: -1
+text dimension 1 paper: 250
+direct dimension 1 paper: 250
+text dimension 1 outward y: 1
+direct dimension 1 outward y: 1
+text dimension 1 view: 42
+direct dimension 1 view: 42
+text sketches: 3
+direct sketches: 3
+text line sketch: 0 1 2 0
+direct line sketch: 0 1 2 0
+text face sketch: 1 4 0
+direct face sketch: 1 4 0
+text word sketch: 2 1 0 Label
+direct word sketch: 2 1 0 Label
+text components: 1
+direct components: 1
+text component: 16 Frame 2
+direct component: 16 Frame 2
+text part face: 1 4 0.05 0
+direct part face: 1 4 0.05 0
+text part line: 0 2 0
+direct part line: 0 2 0
 refused kind: false not built yet: openbim::stair
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
@@ -111,3 +147,5 @@ crossed plate: a plate outline must not cross itself
 short wall: a wall needs a length and a positive height
 unstarted wall: malformed wall
 bad top wall: malformed walltop
+crossed face: a face outline must not cross itself
+connected component: not built yet: openbim::component connectors

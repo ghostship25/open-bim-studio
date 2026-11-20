@@ -5,8 +5,9 @@
 # The groups so far cover the frame and the wall set: the project's `next`, a
 # level, a wall type with its layers, and a wall with its base offset and top
 # level; then the opening types and their openings, the slabs (and the plates
-# of a planar type), and the grid lines. A record kind this module does not
-# build yet is refused by name, so content is never silently dropped.
+# of a planar type), the grid lines, the dimensions, the sketches and the
+# components with their parts. A record kind this module does not build yet is
+# refused by name, so content is never silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -23,6 +24,14 @@ class:
     members:
         valid as a boolean
         modelValue as a bim model record
+        message as a string
+
+class:
+    patterns:
+        [a|] bim ifcx model sketch reading
+    members:
+        valid as a boolean
+        sketchValue as a bim sketch record
         message as a string
 
 local function a bim ifcx model refusal saying {a string:reason}:
@@ -86,6 +95,37 @@ local function the bim ifcx model number {an integer:slot} of {a string:key} in 
         if (the length of entry) != 2:
             return refused
         return the bim real reading of (the text of (the JSON value at index slot in entry))
+
+# The `slot`th whole number of the two-number array `key` of `record`, refused
+# unless it is one: an element or feature reference, as the native file writes
+# it.
+local function the bim ifcx model whole at {an integer:slot} of {a string:key} in {a pointer to a JSON value:record}:
+    execute:
+        set refused to @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return refused
+        if (the kind of entry) != the JSON array kind:
+            return refused
+        if (the length of entry) != 2:
+            return refused
+        return the bim whole reading of (the text of (the JSON value at index slot in entry))
+
+# The pair at `slot` of `entry` appended to `outline`; false when it is not a
+# pair of numbers.
+local function add bim ifcx model point at {an integer:slot} of {a pointer to a JSON value:entry} to {a pointer to a cad topology list:outline}:
+    execute:
+        set pointEntry to the JSON value at index slot in entry
+        if (the kind of pointEntry) != the JSON array kind:
+            return false
+        if (the length of pointEntry) != 2:
+            return false
+        set across to the bim real reading of (the text of (the JSON value at index 0 in pointEntry))
+        set upward to the bim real reading of (the text of (the JSON value at index 1 in pointEntry))
+        if (across's valid and upward's valid) = false:
+            return false
+        append (a cad vector2 with x across's value and y upward's value) to (outline's values)
+        return true
 
 # ---------------------------------------------------------------- the records
 
@@ -233,17 +273,8 @@ local function the bim ifcx model outline of {a pointer to a JSON value:record} 
         if (the length of entry) < 3:
             return (((the string form of "a ") + noun) + (the string form of " needs at least 3 corners"))
         loop cursor from 0 to the length of entry:
-            set pointEntry to the JSON value at index cursor in entry
-            set usable to (the kind of pointEntry) = the JSON array kind
-            if usable:
-                set usable to (the length of pointEntry) = 2
-            if usable = false:
+            if (add bim ifcx model point at cursor of entry to outline) = false:
                 return (malformed + (the string form of " corner"))
-            set across to the bim real reading of (the text of (the JSON value at index 0 in pointEntry))
-            set upward to the bim real reading of (the text of (the JSON value at index 1 in pointEntry))
-            if (across's valid and upward's valid) = false:
-                return (malformed + (the string form of " corner"))
-            append (a cad vector2 with x across's value and y upward's value) to (outline's values)
         if (bim outline (outline's values) is simple) = false:
             return (((the string form of "a ") + noun) + (the string form of " outline must not cross itself"))
         return the string form of ""
@@ -347,6 +378,156 @@ local function add bim ifcx model grid {a pointer to a JSON value:record} into {
         append (@intrinsic("construct", a bim grid record, id's value, (the bim ifcx model text (the string form of "name") of record), startPoint, finishPoint, low's value, high's value)) to (modelValue's grids's values)
         return the string form of ""
 
+# A dimension: two references and, where it is placed, the line it is drawn
+# through. A paper offset and its outward, and then the view they belong to,
+# sit inside `place`, as the native line nests them.
+local function add bim ifcx model dimension {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set firstElement to the bim ifcx model whole at 0 of (the string form of "first") in record
+        set firstFeature to the bim ifcx model whole at 1 of (the string form of "first") in record
+        set secondElement to the bim ifcx model whole at 0 of (the string form of "second") in record
+        set secondFeature to the bim ifcx model whole at 1 of (the string form of "second") in record
+        set endsValid to (firstElement's valid and firstFeature's valid) and (secondElement's valid and secondFeature's valid)
+        if (id's valid and endsValid) = false:
+            return the string form of "malformed dimension"
+        set placed to (the bim ifcx model member (the string form of "place") of record) != (0 as a pointer to a JSON value)
+        set placeX to the bim ifcx model number 0 of (the string form of "place") in record
+        set placeY to the bim ifcx model number 1 of (the string form of "place") in record
+        if placed and ((placeX's valid and placeY's valid) = false):
+            return the string form of "malformed dimension"
+        set paperOffset to 0.0
+        set outwardX to 0.0
+        set outwardY to 0.0
+        set viewId to the bim refused id
+        if placed and ((the bim ifcx model member (the string form of "outward") of record) != (0 as a pointer to a JSON value)):
+            set paper to the bim ifcx model real (the string form of "paperOffset") of record
+            set across to the bim ifcx model number 0 of (the string form of "outward") in record
+            set upward to the bim ifcx model number 1 of (the string form of "outward") in record
+            if ((paper's valid and across's valid) and upward's valid) = false:
+                return the string form of "malformed dimension"
+            set paperOffset to paper's value
+            set outwardX to across's value
+            set outwardY to upward's value
+            if (the bim ifcx model member (the string form of "view") of record) != (0 as a pointer to a JSON value):
+                set view to the bim ifcx model whole (the string form of "view") of record
+                if view's valid = false:
+                    return the string form of "malformed dimension"
+                set viewId to view's value
+        if (bim ifcx model id id's value follows (modelValue's dimensions's values)) = false:
+            return the string form of "dimension ids out of order"
+        set placePoint to a cad vector2 with x 0.0 and y 0.0
+        if placed:
+            set placePoint to a cad vector2 with x placeX's value and y placeY's value
+        set firstEnd to @intrinsic("construct", a bim reference record, firstElement's value, firstFeature's value as an integer)
+        set secondEnd to @intrinsic("construct", a bim reference record, secondElement's value, secondFeature's value as an integer)
+        append (@intrinsic("construct", a bim dimension record, id's value, firstEnd, secondEnd, placed, placePoint, paperOffset, (a cad vector2 with x outwardX and y outwardY), viewId)) to (modelValue's dimensions's values)
+        return the string form of ""
+
+local function a bim ifcx model sketch refusal saying {a string:reason}:
+    execute:
+        set blank to @intrinsic("construct", a bim sketch record, the bim refused id, 0 as a 64 bit integer, bim line sketch, a cad topology list of a cad vector2, 0.0, (the string form of ""))
+        return @intrinsic("construct", a bim ifcx model sketch reading, false, blank, reason)
+
+# The sketch `record` on `levelId` as the text parser reads one: its kind fixes
+# how many points it has, and a text or an image sketch carries its words or
+# its path after them. A sketch of its own follows the one with id `lastId`; a
+# part of a component, on no level of its own, has no order either.
+local function the bim ifcx model sketch of {a pointer to a JSON value:record} on {a 64 bit integer:levelId} after {a 64 bit integer:lastId}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set kind to the bim ifcx model whole (the string form of "kind") of record
+        set height to the bim ifcx model real (the string form of "height") of record
+        if ((id's valid and kind's valid) and height's valid) = false:
+            return a bim ifcx model sketch refusal saying (the string form of "malformed sketch")
+        set kindCode to kind's value as an integer
+        set pointsEntry to the bim ifcx model member (the string form of "points") of record
+        set pointCount to 0
+        set hasPoints to false
+        if pointsEntry != (0 as a pointer to a JSON value):
+            if (the kind of pointsEntry) = the JSON array kind:
+                set pointCount to the length of pointsEntry
+                set hasPoints to true
+        set shaped to false
+        if hasPoints:
+            if (kindCode = bim line sketch) and (pointCount = 2):
+                set shaped to true
+            if (kindCode = bim face sketch) and (pointCount >= 3):
+                set shaped to true
+            if (kindCode = bim text sketch) and (pointCount = 1):
+                set shaped to true
+            if (kindCode = bim image sketch) and (pointCount = 4):
+                set shaped to true
+        if shaped = false:
+            return a bim ifcx model sketch refusal saying (the string form of "malformed sketch")
+        if (lastId >= (0 as a 64 bit integer)) and (id's value <= lastId):
+            return a bim ifcx model sketch refusal saying (the string form of "sketch ids out of order")
+        if height's value < 0.0:
+            return a bim ifcx model sketch refusal saying (the string form of "a mass needs a height of 0 or more")
+        set points to a cad topology list of a cad vector2
+        set pointsFault to false
+        loop cursor from 0 to pointCount:
+            if pointsFault = false:
+                if (add bim ifcx model point at cursor of pointsEntry to (the address of points)) = false:
+                    set pointsFault to true
+        if pointsFault:
+            return a bim ifcx model sketch refusal saying (the string form of "malformed sketch point")
+        set content to the string form of ""
+        if (kindCode = bim text sketch) or (kindCode = bim image sketch):
+            set content to the bim ifcx model text (the string form of "text") of record
+        if (kindCode = bim face sketch) and ((bim outline (points's values) is simple) = false):
+            return a bim ifcx model sketch refusal saying (the string form of "a face outline must not cross itself")
+        return @intrinsic("construct", a bim ifcx model sketch reading, true, (@intrinsic("construct", a bim sketch record, id's value, levelId, kindCode, points, height's value, content)), (the string form of ""))
+
+# A sketch of the model, on the level its record names.
+local function add bim ifcx model element sketch {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        if levelId's valid = false:
+            return the string form of "malformed sketch"
+        set earlier to modelValue's sketches's values
+        set lastId to the bim refused id
+        if (the length of earlier) > 0:
+            set lastId to (the last item of earlier)'s id
+        set reading to the bim ifcx model sketch of record on levelId's value after lastId
+        if reading's valid = false:
+            return reading's message
+        append reading's sketchValue to (modelValue's sketches's values)
+        return the string form of ""
+
+# A component: its name and the parts it is built from. Its connectors and its
+# solids are not built yet, and are refused by name rather than dropped.
+local function add bim ifcx model component {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        if id's valid = false:
+            return the string form of "malformed component"
+        if (bim ifcx model id id's value follows (modelValue's components's values)) = false:
+            return the string form of "component ids out of order"
+        set parts to a cad topology list of a bim sketch record
+        set fault to the string form of ""
+        set partsEntry to the bim ifcx model member (the string form of "parts") of record
+        set partsListed to false
+        if partsEntry != (0 as a pointer to a JSON value):
+            set partsListed to (the kind of partsEntry) = the JSON array kind
+        if partsListed:
+            loop cursor from 0 to the length of partsEntry:
+                if (the length of fault) = 0:
+                    set partReading to the bim ifcx model sketch of (the JSON value at index cursor in partsEntry) on (0 as a 64 bit integer) after (the bim refused id)
+                    if partReading's valid = false:
+                        set fault to partReading's message
+                    else:
+                        append partReading's sketchValue to (parts's values)
+        if (the length of fault) = 0:
+            if (the bim ifcx model member (the string form of "connectors") of record) != (0 as a pointer to a JSON value):
+                set fault to the string form of "not built yet: openbim::component connectors"
+            if (the bim ifcx model member (the string form of "solids") of record) != (0 as a pointer to a JSON value):
+                set fault to the string form of "not built yet: openbim::component solids"
+        if (the length of fault) > 0:
+            return fault
+        append (@intrinsic("construct", a bim component record, id's value, (the bim ifcx model text (the string form of "name") of record), parts, a cad topology list of a bim solid part record, 0, a cad topology list of a bim component connector record)) to (modelValue's components's values)
+        return the string form of ""
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -397,6 +578,12 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model slab record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::grid"):
                                 set fault to (add bim ifcx model grid record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::dimension"):
+                                set fault to (add bim ifcx model dimension record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::sketch"):
+                                set fault to (add bim ifcx model element sketch record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::component"):
+                                set fault to (add bim ifcx model component record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
