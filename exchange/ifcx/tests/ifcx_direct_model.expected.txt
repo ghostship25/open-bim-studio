@@ -108,3 +108,6 @@ refused kind: false not built yet: openbim::stair
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
 crossed plate: a plate outline must not cross itself
+short wall: a wall needs a length and a positive height
+unstarted wall: malformed wall
+bad top wall: malformed walltop

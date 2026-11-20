@@ -204,3 +204,14 @@ print ((the string form of "short slab: ") + fromShortSlab's message) as a line
 set crossedPlate to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"type\":9,\"top\":0.0,\"pitch\":0.0,\"heading\":0.0,\"outline\":[[0,0],[1,1],[1,0],[0,1]]}}}]}"
 set fromCrossedPlate to the bim ifcx model of crossedPlate
 print ((the string form of "crossed plate: ") + fromCrossedPlate's message) as a line
+
+# A wall's line comes before its foot and top, as the text parser reads them.
+set shortWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"start\":[0,0],\"finish\":[0,0],\"height\":3,\"bulge\":0}}}]}"
+set fromShortWall to the bim ifcx model of shortWall
+print ((the string form of "short wall: ") + fromShortWall's message) as a line
+set unstartedWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"finish\":[4,0],\"height\":3,\"bulge\":0}}}]}"
+set fromUnstartedWall to the bim ifcx model of unstartedWall
+print ((the string form of "unstarted wall: ") + fromUnstartedWall's message) as a line
+set badTopWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3,\"bulge\":0,\"topLevel\":\"x\"}}}]}"
+set fromBadTopWall to the bim ifcx model of badTopWall
+print ((the string form of "bad top wall: ") + fromBadTopWall's message) as a line

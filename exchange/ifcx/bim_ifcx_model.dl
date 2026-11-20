@@ -142,68 +142,58 @@ local function add bim ifcx model wall type {a pointer to a JSON value:record} i
                         return the string form of "malformed layer"
         return the string form of ""
 
+# A wall: its line, which `wallbase` and `walltop` may then lift and cap. The
+# refusals are the text parser's, in its order: the wall line's own faults
+# before the foot and the top that follow it.
 local function add bim ifcx model wall {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
     execute:
         set id to the bim ifcx model whole (the string form of "id") of record
         set typeId to the bim ifcx model whole (the string form of "type") of record
         set levelId to the bim ifcx model whole (the string form of "level") of record
+        set startX to the bim ifcx model number 0 of (the string form of "start") in record
+        set startY to the bim ifcx model number 1 of (the string form of "start") in record
+        set finishX to the bim ifcx model number 0 of (the string form of "finish") in record
+        set finishY to the bim ifcx model number 1 of (the string form of "finish") in record
         set height to the bim ifcx model real (the string form of "height") of record
         set bulge to the bim ifcx model real (the string form of "bulge") of record
-        if ((((id's valid and typeId's valid) and levelId's valid) and height's valid) and bulge's valid) = false:
-            return the string form of "malformed wall"
-        set startReading to the bim ifcx model member (the string form of "start") of record
-        set finishReading to the bim ifcx model member (the string form of "finish") of record
-        set startX to @intrinsic("construct", a bim real reading record, false, 0.0)
-        set startY to startX
-        set finishX to startX
-        set finishY to startX
-        set usable to true
-        if ((the kind of startReading) = the JSON array kind) and ((the length of startReading) = 2):
-            set startX to the bim real reading of (the text of (the JSON value at index 0 in startReading))
-            set startY to the bim real reading of (the text of (the JSON value at index 1 in startReading))
-        else:
-            set usable to false
-        if ((the kind of finishReading) = the JSON array kind) and ((the length of finishReading) = 2):
-            set finishX to the bim real reading of (the text of (the JSON value at index 0 in finishReading))
-            set finishY to the bim real reading of (the text of (the JSON value at index 1 in finishReading))
-        else:
-            set usable to false
-        if usable = false:
-            return the string form of "malformed wall"
-        if (((startX's valid and startY's valid) and finishX's valid) and finishY's valid) = false:
+        set endsValid to (startX's valid and startY's valid) and (finishX's valid and finishY's valid)
+        set fieldsValid to (id's valid and typeId's valid) and (levelId's valid and endsValid)
+        set measuresValid to height's valid and bulge's valid
+        if (fieldsValid and measuresValid) = false:
             return the string form of "malformed wall"
         if (bim ifcx model id id's value follows (modelValue's walls's values)) = false:
             return the string form of "wall ids out of order"
         set startPoint to a cad vector2 with x startX's value and y startY's value
         set finishPoint to a cad vector2 with x finishX's value and y finishY's value
-        set lean to the bim ifcx model real (the string form of "lean") of record
-        set rise to the bim ifcx model real (the string form of "rise") of record
-        set baseOffset to the bim ifcx model real (the string form of "baseOffset") of record
-        set topLevelId to the bim refused id
-        set topEntry to the bim ifcx model member (the string form of "topLevel") of record
-        if topEntry != (0 as a pointer to a JSON value):
-            set topReading to @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
-            if ((the kind of topEntry) = the JSON number kind) or ((the kind of topEntry) = the JSON text kind):
-                set topReading to the bim whole reading of (the text of topEntry)
-            if topReading's valid = false:
-                return the string form of "malformed walltop"
-            set topLevelId to topReading's value
-        set leanValue to 0.0
-        if lean's valid:
-            set leanValue to lean's value
-        set riseValue to 0.0
-        if rise's valid:
-            set riseValue to rise's value
-        set baseValue to 0.0
-        if baseOffset's valid:
-            set baseValue to baseOffset's value
         set span to the cad distance from startPoint to finishPoint
         if (span <= 1e-6) or (height's value <= 0.0):
             return the string form of "a wall needs a length and a positive height"
         if (the absolute value of bulge's value) > (span * 0.5):
             return the string form of "a wall's bulge exceeds a half circle"
+        # A shaped wall writes its lean and its rise together, or writes neither.
+        set leanValue to 0.0
+        set riseValue to 0.0
+        if (the bim ifcx model member (the string form of "lean") of record) != (0 as a pointer to a JSON value):
+            set lean to the bim ifcx model real (the string form of "lean") of record
+            set rise to the bim ifcx model real (the string form of "rise") of record
+            if (lean's valid and rise's valid) = false:
+                return the string form of "malformed wall"
+            set leanValue to lean's value
+            set riseValue to rise's value
         if ((the absolute value of leanValue) >= height's value) or ((the absolute value of riseValue) >= height's value):
             return the string form of "a wall's lean or rise reaches its height"
+        set baseValue to 0.0
+        if (the bim ifcx model member (the string form of "baseOffset") of record) != (0 as a pointer to a JSON value):
+            set baseOffset to the bim ifcx model real (the string form of "baseOffset") of record
+            if baseOffset's valid = false:
+                return the string form of "malformed wallbase"
+            set baseValue to baseOffset's value
+        set topLevelId to the bim refused id
+        if (the bim ifcx model member (the string form of "topLevel") of record) != (0 as a pointer to a JSON value):
+            set topLevel to the bim ifcx model whole (the string form of "topLevel") of record
+            if topLevel's valid = false:
+                return the string form of "malformed walltop"
+            set topLevelId to topLevel's value
         append (@intrinsic("construct", a bim wall record, id's value, typeId's value, levelId's value, startPoint, finishPoint, height's value, bulge's value, leanValue, riseValue, baseValue, topLevelId)) to (modelValue's walls's values)
         return the string form of ""
 
