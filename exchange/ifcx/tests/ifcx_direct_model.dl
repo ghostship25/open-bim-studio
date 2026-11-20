@@ -192,3 +192,15 @@ print ((the string form of "direct grid high: ") + (the string form of directGri
 set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
 print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
+
+# A malformed outline is refused with the kind it belongs to, in the text
+# parser's words.
+set crossedSlab to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"thickness\":0.2,\"outline\":[[0,0],[1,1],[1,0],[0,1]]}}}]}"
+set fromCrossedSlab to the bim ifcx model of crossedSlab
+print ((the string form of "crossed slab: ") + fromCrossedSlab's message) as a line
+set shortSlab to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"thickness\":0.2,\"outline\":[[0,0],[1,1]]}}}]}"
+set fromShortSlab to the bim ifcx model of shortSlab
+print ((the string form of "short slab: ") + fromShortSlab's message) as a line
+set crossedPlate to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"type\":9,\"top\":0.0,\"pitch\":0.0,\"heading\":0.0,\"outline\":[[0,0],[1,1],[1,0],[0,1]]}}}]}"
+set fromCrossedPlate to the bim ifcx model of crossedPlate
+print ((the string form of "crossed plate: ") + fromCrossedPlate's message) as a line

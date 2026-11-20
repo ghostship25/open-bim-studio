@@ -105,3 +105,6 @@ direct grid low: -1
 text grid high: 4
 direct grid high: 4
 refused kind: false not built yet: openbim::stair
+crossed slab: a slab outline must not cross itself
+short slab: a slab needs at least 3 corners
+crossed plate: a plate outline must not cross itself

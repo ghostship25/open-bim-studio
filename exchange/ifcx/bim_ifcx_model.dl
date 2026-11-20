@@ -73,32 +73,19 @@ local function bim ifcx model id {a 64 bit integer:wanted} follows {a pointer to
             return true
         return (the item at ((the length of records) - 1) in records)'s id < wanted
 
-# The numbers of an array of numbers (`[x, y]`), or 0 for both when it is not
-# one.
-local function the bim ifcx model pair {a string:key} of {a pointer to a JSON value:record}:
+# The `slot`th number of the two-number array `key` of `record` (`[x, y]`),
+# refused unless it is one.
+local function the bim ifcx model number {an integer:slot} of {a string:key} in {a pointer to a JSON value:record}:
     execute:
-        set pairValue to @intrinsic("construct", a bim real reading record, true, 0.0)
-        set otherValue to @intrinsic("construct", a bim real reading record, true, 0.0)
-        set entry to the bim ifcx model member key of record
-        if entry != (0 as a pointer to a JSON value):
-            if (the kind of entry) = the JSON array kind:
-                if (the length of entry) = 2:
-                    set pairValue to the bim real reading of (the text of (the JSON value at index 0 in entry))
-                    set otherValue to the bim real reading of (the text of (the JSON value at index 1 in entry))
-        if (pairValue's valid and otherValue's valid) = false:
-            return @intrinsic("construct", a bim real reading record, false, 0.0)
-        return pairValue
-
-local function the bim ifcx model second {a string:key} of {a pointer to a JSON value:record}:
-    execute:
+        set refused to @intrinsic("construct", a bim real reading record, false, 0.0)
         set entry to the bim ifcx model member key of record
         if entry = (0 as a pointer to a JSON value):
-            return @intrinsic("construct", a bim real reading record, false, 0.0)
+            return refused
         if (the kind of entry) != the JSON array kind:
-            return @intrinsic("construct", a bim real reading record, false, 0.0)
+            return refused
         if (the length of entry) != 2:
-            return @intrinsic("construct", a bim real reading record, false, 0.0)
-        return the bim real reading of (the text of (the JSON value at index 1 in entry))
+            return refused
+        return the bim real reading of (the text of (the JSON value at index slot in entry))
 
 # ---------------------------------------------------------------- the records
 
@@ -220,44 +207,55 @@ local function add bim ifcx model wall {a pointer to a JSON value:record} into {
         append (@intrinsic("construct", a bim wall record, id's value, typeId's value, levelId's value, startPoint, finishPoint, height's value, bulge's value, leanValue, riseValue, baseValue, topLevelId)) to (modelValue's walls's values)
         return the string form of ""
 
-# True when the JSON member `key` of `record` is a true flag: the boolean
-# `true`, or the number 1 the native file writes.
+# The flag `key` of `record` as 0 or 1: a boolean, or the number a native file
+# writes. Refused unless it is one, as the text parser refuses it.
 local function bim ifcx model flag {a string:key} of {a pointer to a JSON value:record}:
     execute:
+        set refused to @intrinsic("construct", a bim whole reading record, false, 0 as a 64 bit integer)
+        set off to @intrinsic("construct", a bim whole reading record, true, 0 as a 64 bit integer)
         set entry to the bim ifcx model member key of record
         if entry = (0 as a pointer to a JSON value):
-            return false
+            return refused
         if (the kind of entry) = the JSON boolean kind:
-            return the boolean of entry
-        if (the kind of entry) = the JSON number kind:
-            return (the text of entry) = (the string form of "1")
-        return false
+            if the boolean of entry:
+                return @intrinsic("construct", a bim whole reading record, true, 1 as a 64 bit integer)
+            return off
+        if (the kind of entry) != the JSON number kind:
+            return refused
+        set reading to the bim whole reading of (the text of entry)
+        if reading's valid = false:
+            return refused
+        if (reading's value < (0 as a 64 bit integer)) or (reading's value > (1 as a 64 bit integer)):
+            return refused
+        return reading
 
-# The outline of `record` into `outline`: a ring of at least three corners
-# that does not cross itself. Empty when it is sound.
-local function the bim ifcx model outline of {a pointer to a JSON value:record} into {a pointer to a cad topology list:outline}:
+# `record`'s outline into `outline`, read as a `noun`'s ring: at least three
+# corners that do not cross themselves. Empty when it is sound; the refusals
+# name the noun, as the text parser's do.
+local function the bim ifcx model outline of {a pointer to a JSON value:record} named {a string:noun} into {a pointer to a cad topology list:outline}:
     execute:
+        set malformed to ((the string form of "malformed ") + noun)
         set entry to the bim ifcx model member (the string form of "outline") of record
         if entry = (0 as a pointer to a JSON value):
-            return the string form of "malformed outline"
+            return malformed
         if (the kind of entry) != the JSON array kind:
-            return the string form of "malformed outline"
+            return malformed
         if (the length of entry) < 3:
-            return the string form of "an outline needs at least 3 corners"
+            return (((the string form of "a ") + noun) + (the string form of " needs at least 3 corners"))
         loop cursor from 0 to the length of entry:
             set pointEntry to the JSON value at index cursor in entry
-            set usable to false
-            if (the kind of pointEntry) = the JSON array kind:
+            set usable to (the kind of pointEntry) = the JSON array kind
+            if usable:
                 set usable to (the length of pointEntry) = 2
             if usable = false:
-                return the string form of "malformed outline corner"
+                return (malformed + (the string form of " corner"))
             set across to the bim real reading of (the text of (the JSON value at index 0 in pointEntry))
             set upward to the bim real reading of (the text of (the JSON value at index 1 in pointEntry))
             if (across's valid and upward's valid) = false:
-                return the string form of "malformed outline corner"
+                return (malformed + (the string form of " corner"))
             append (a cad vector2 with x across's value and y upward's value) to (outline's values)
         if (bim outline (outline's values) is simple) = false:
-            return the string form of "an outline must not cross itself"
+            return (((the string form of "a ") + noun) + (the string form of " outline must not cross itself"))
         return the string form of ""
 
 local function add bim ifcx model opening type {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
@@ -271,7 +269,10 @@ local function add bim ifcx model opening type {a pointer to a JSON value:record
             return the string form of "malformed openingtype"
         if (bim ifcx model id id's value follows (modelValue's openingTypes's values)) = false:
             return the string form of "openingtype ids out of order"
-        set door to bim ifcx model flag (the string form of "door") of record
+        set doorReading to bim ifcx model flag (the string form of "door") of record
+        if doorReading's valid = false:
+            return the string form of "malformed openingtype"
+        set door to doorReading's value = (1 as a 64 bit integer)
         set doorFault to door and (sill's value != 0.0)
         set sizesValid to (width's value > 0.0) and (height's value > 0.0)
         set offsetsValid to (sill's value >= 0.0) and (frame's value >= 0.0)
@@ -301,11 +302,14 @@ local function add bim ifcx model slab {a pointer to a JSON value:record} into {
             return the string form of "malformed slab"
         if (bim ifcx model id id's value follows (modelValue's slabs's values)) = false:
             return the string form of "slab ids out of order"
+        set typeReading to the bim ifcx model whole (the string form of "type") of record
+        set noun to the string form of "slab"
+        if typeReading's valid:
+            set noun to the string form of "plate"
         set outline to a cad topology list of a cad vector2
-        set outlineFault to the bim ifcx model outline of record into (the address of outline)
+        set outlineFault to the bim ifcx model outline of record named noun into (the address of outline)
         if (the length of outlineFault) > 0:
             return outlineFault
-        set typeReading to the bim ifcx model whole (the string form of "type") of record
         if typeReading's valid:
             # A plate of a planar type: its thickness follows from the type.
             set top to the bim ifcx model real (the string form of "top") of record
@@ -337,11 +341,12 @@ local function add bim ifcx model grid {a pointer to a JSON value:record} into {
         set id to the bim ifcx model whole (the string form of "id") of record
         set low to the bim ifcx model real (the string form of "low") of record
         set high to the bim ifcx model real (the string form of "high") of record
-        set startX to the bim ifcx model pair (the string form of "start") of record
-        set startY to the bim ifcx model second (the string form of "start") of record
-        set finishX to the bim ifcx model pair (the string form of "finish") of record
-        set finishY to the bim ifcx model second (the string form of "finish") of record
-        if (((((id's valid and low's valid) and high's valid) and startX's valid) and startY's valid) and (finishX's valid and finishY's valid)) = false:
+        set startX to the bim ifcx model number 0 of (the string form of "start") in record
+        set startY to the bim ifcx model number 1 of (the string form of "start") in record
+        set finishX to the bim ifcx model number 0 of (the string form of "finish") in record
+        set finishY to the bim ifcx model number 1 of (the string form of "finish") in record
+        set endsValid to (startX's valid and startY's valid) and (finishX's valid and finishY's valid)
+        if ((id's valid and low's valid) and (high's valid and endsValid)) = false:
             return the string form of "malformed grid"
         if (bim ifcx model id id's value follows (modelValue's grids's values)) = false:
             return the string form of "grid ids out of order"
