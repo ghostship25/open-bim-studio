@@ -140,6 +140,22 @@ text part face: 1 4 0.05 0
 direct part face: 1 4 0.05 0
 text part line: 0 2 0
 direct part line: 0 2 0
+text solids: 3
+direct solids: 3
+text connectors: 2
+direct connectors: 2
+text component role: 1
+direct component role: 1
+text solid 0: 0 0 0 1 0 0 timber 0 0
+direct solid 0: 0 0 0 1 0 0 timber 0 0
+text solid 1: 3 1 0.2 0.5 0.25 3 1 steel
+direct solid 1: 3 1 0.2 0.5 0.25 3 1 steel
+text solid 2: 4 3 4 3 0 generic
+direct solid 2: 4 3 4 3 0 generic
+text connector 0: 0.5 0.05 -1 0.015 4
+direct connector 0: 0.5 0.05 -1 0.015 4
+text connector 1: 0.5 1 0.02 4
+direct connector 1: 0.5 1 0.02 4
 refused kind: false not built yet: openbim::stair
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
@@ -148,4 +164,6 @@ short wall: a wall needs a length and a positive height
 unstarted wall: malformed wall
 bad top wall: malformed walltop
 crossed face: a face outline must not cross itself
-connected component: not built yet: openbim::component connectors
+short connector: malformed connector
+unknown solid: unknown solid kind or operation
+lost face: a solid's face refers to a missing point

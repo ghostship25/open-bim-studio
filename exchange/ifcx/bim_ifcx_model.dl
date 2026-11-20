@@ -6,8 +6,9 @@
 # level, a wall type with its layers, and a wall with its base offset and top
 # level; then the opening types and their openings, the slabs (and the plates
 # of a planar type), the grid lines, the dimensions, the sketches and the
-# components with their parts. A record kind this module does not build yet is
-# refused by name, so content is never silently dropped.
+# components with their parts, their connectors and their solids. A record kind
+# this module does not build yet is refused by name, so content is never
+# silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -33,6 +34,13 @@ class:
         valid as a boolean
         sketchValue as a bim sketch record
         message as a string
+
+class:
+    patterns:
+        [a|] bim ifcx model point reading
+    members:
+        valid as a boolean
+        point as a cad vector3
 
 local function a bim ifcx model refusal saying {a string:reason}:
     execute:
@@ -125,6 +133,72 @@ local function add bim ifcx model point at {an integer:slot} of {a pointer to a 
         if (across's valid and upward's valid) = false:
             return false
         append (a cad vector2 with x across's value and y upward's value) to (outline's values)
+        return true
+
+# The three numbers at `slot` of the array `entry` as a point; refused unless
+# the array holds them.
+local function the bim ifcx model triple at {an integer:slot} of {a pointer to a JSON value:entry}:
+    execute:
+        set refused to @intrinsic("construct", a bim ifcx model point reading, false, (a cad vector3 with x 0.0, y 0.0 and z 0.0))
+        if (the kind of entry) != the JSON array kind:
+            return refused
+        if (the length of entry) < (slot + 3):
+            return refused
+        set across to the bim real reading of (the text of (the JSON value at index slot in entry))
+        set upward to the bim real reading of (the text of (the JSON value at index (slot + 1) in entry))
+        set rising to the bim real reading of (the text of (the JSON value at index (slot + 2) in entry))
+        if ((across's valid and upward's valid) and rising's valid) = false:
+            return refused
+        return @intrinsic("construct", a bim ifcx model point reading, true, (a cad vector3 with x across's value, y upward's value and z rising's value))
+
+# The three numbers of `key` as a point: refused unless it is one.
+local function the bim ifcx model point {a string:key} of {a pointer to a JSON value:record}:
+    execute:
+        set refused to @intrinsic("construct", a bim ifcx model point reading, false, (a cad vector3 with x 0.0, y 0.0 and z 0.0))
+        set entry to the bim ifcx model member key of record
+        if entry = (0 as a pointer to a JSON value):
+            return refused
+        if (the kind of entry) != the JSON array kind:
+            return refused
+        if (the length of entry) != 3:
+            return refused
+        return the bim ifcx model triple at 0 of entry
+
+# The pairs of `entry` appended to `profile`; false when it is not a list of
+# pairs of numbers.
+local function add bim ifcx model profile of {a pointer to a JSON value:entry} to {a pointer to a cad topology list:profile}:
+    execute:
+        if (the kind of entry) != the JSON array kind:
+            return false
+        loop cursor from 0 to the length of entry:
+            if (add bim ifcx model point at cursor of entry to profile) = false:
+                return false
+        return true
+
+# The triples of `entry` appended to `points`; false when it is not a list of
+# triples of numbers.
+local function add bim ifcx model mesh points of {a pointer to a JSON value:entry} to {a pointer to a cad topology list:points}:
+    execute:
+        if (the kind of entry) != the JSON array kind:
+            return false
+        loop cursor from 0 to the length of entry:
+            set reading to the bim ifcx model triple at 0 of (the JSON value at index cursor in entry)
+            if reading's valid = false:
+                return false
+            append reading's point to (points's values)
+        return true
+
+# The point numbers of `entry` appended to `faces`; false when one is not a
+# point number.
+local function add bim ifcx model faces of {a pointer to a JSON value:entry} to {a pointer to a cad topology list:faces}:
+    execute:
+        if (the kind of entry) != the JSON array kind:
+            return false
+        loop cursor from 0 to the length of entry:
+            set number to the bim whole reading of (the text of (the JSON value at index cursor in entry))
+            if (number's valid = false) or ((number's value < (0 as a 64 bit integer)) or (number's value > (10000000 as a 64 bit integer))):
+                return false
+            append (number's value as an integer) to (faces's values)
         return true
 
 # ---------------------------------------------------------------- the records
@@ -495,8 +569,76 @@ local function add bim ifcx model element sketch {a pointer to a JSON value:reco
         append reading's sketchValue to (modelValue's sketches's values)
         return the string form of ""
 
-# A component: its name and the parts it is built from. Its connectors and its
-# solids are not built yet, and are refused by name rather than dropped.
+# A solid part of a component, read as the text parser reads a solid line: its
+# kind and operation, where it stands and how big it is, the profile it is
+# extruded from and the mesh it is made of, and the material it is of. A face
+# must fit the points it names.
+local function add bim ifcx model solid {a pointer to a JSON value:record} into {a pointer to a cad topology list:solids}:
+    execute:
+        set kind to the bim ifcx model whole (the string form of "kind") of record
+        set operation to the bim ifcx model whole (the string form of "operation") of record
+        set origin to the bim ifcx model point (the string form of "origin") of record
+        set size to the bim ifcx model point (the string form of "size") of record
+        set angle to the bim ifcx model real (the string form of "angle") of record
+        if ((((kind's valid and operation's valid) and (origin's valid and size's valid)) and angle's valid) = false):
+            return the string form of "malformed solid"
+        set profile to a cad topology list of a cad vector2
+        set profileEntry to the bim ifcx model member (the string form of "profile") of record
+        if profileEntry != (0 as a pointer to a JSON value):
+            if (add bim ifcx model profile of profileEntry to (the address of profile)) = false:
+                return the string form of "malformed solid point"
+        set points to a cad topology list of a cad vector3
+        set pointsEntry to the bim ifcx model member (the string form of "points") of record
+        if pointsEntry != (0 as a pointer to a JSON value):
+            if (add bim ifcx model mesh points of pointsEntry to (the address of points)) = false:
+                return the string form of "malformed solid point"
+        set faces to a cad topology list of an integer
+        set facesEntry to the bim ifcx model member (the string form of "faces") of record
+        if facesEntry != (0 as a pointer to a JSON value):
+            if (add bim ifcx model faces of facesEntry to (the address of faces)) = false:
+                return the string form of "malformed solid face"
+        if ((the length of (faces's values)) > 0) and ((bim mesh faces (faces's values) fit (the length of (points's values))) = false):
+            return the string form of "a solid's face refers to a missing point"
+        set kindCode to kind's value as an integer
+        set operationCode to operation's value as an integer
+        if ((kindCode < 0) or (kindCode > 4)) or ((operationCode < 0) or (operationCode > 2)):
+            return the string form of "unknown solid kind or operation"
+        append (@intrinsic("construct", a bim solid part record, kindCode, operationCode, origin's point, size's point, angle's value, profile, (the bim ifcx model text (the string form of "material") of record), points, faces)) to (solids's values)
+        return the string form of ""
+
+# The solids of the array `entry` appended to `solids`, each read as a solid
+# line; the first fault is returned.
+local function add bim ifcx model solids of {a pointer to a JSON value:entry} into {a pointer to a cad topology list:solids}:
+    execute:
+        if (the kind of entry) != the JSON array kind:
+            return the string form of "malformed solid"
+        set fault to the string form of ""
+        loop cursor from 0 to the length of entry:
+            if (the length of fault) = 0:
+                set fault to (add bim ifcx model solid (the JSON value at index cursor in entry) into solids)
+        return fault
+
+# A connector of a component, read as the text parser reads a connector line:
+# its spot and the direction out of it, its size, and the role of the segments
+# it takes.
+local function add bim ifcx model connector {a pointer to a JSON value:entry} to {a pointer to a cad topology list:connectors}:
+    execute:
+        if (the kind of entry) != the JSON array kind:
+            return false
+        if (the length of entry) != 8:
+            return false
+        set spot to the bim ifcx model triple at 0 of entry
+        set direction to the bim ifcx model triple at 3 of entry
+        set size to the bim real reading of (the text of (the JSON value at index 6 in entry))
+        set role to the bim whole reading of (the text of (the JSON value at index 7 in entry))
+        if ((spot's valid and direction's valid) and (size's valid and role's valid)) = false:
+            return false
+        append (@intrinsic("construct", a bim component connector record, spot's point, direction's point, size's value, role's value as an integer)) to (connectors's values)
+        return true
+
+# A component: its name and the parts it is built from, then the connectors its
+# services join at and the solids it is made of. A component with connectors
+# carries the role they are for, as a connector line does.
 local function add bim ifcx model component {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
     execute:
         set id to the bim ifcx model whole (the string form of "id") of record
@@ -518,14 +660,33 @@ local function add bim ifcx model component {a pointer to a JSON value:record} i
                         set fault to partReading's message
                     else:
                         append partReading's sketchValue to (parts's values)
+        set role to 0
+        set roleReading to the bim ifcx model whole (the string form of "role") of record
+        set connectors to a cad topology list of a bim component connector record
+        set connectorsEntry to the bim ifcx model member (the string form of "connectors") of record
+        set connectorsListed to false
+        if connectorsEntry != (0 as a pointer to a JSON value):
+            set connectorsListed to (the kind of connectorsEntry) = the JSON array kind
+            if (connectorsListed = false) and ((the length of fault) = 0):
+                set fault to the string form of "malformed connector"
+        if connectorsListed:
+            if (roleReading's valid = false) and ((the length of connectorsEntry) > 0):
+                if (the length of fault) = 0:
+                    set fault to the string form of "malformed connector"
+            if roleReading's valid:
+                set role to roleReading's value as an integer
+            loop cursor from 0 to the length of connectorsEntry:
+                if (the length of fault) = 0:
+                    if (add bim ifcx model connector (the JSON value at index cursor in connectorsEntry) to (the address of connectors)) = false:
+                        set fault to the string form of "malformed connector"
+        set solids to a cad topology list of a bim solid part record
         if (the length of fault) = 0:
-            if (the bim ifcx model member (the string form of "connectors") of record) != (0 as a pointer to a JSON value):
-                set fault to the string form of "not built yet: openbim::component connectors"
-            if (the bim ifcx model member (the string form of "solids") of record) != (0 as a pointer to a JSON value):
-                set fault to the string form of "not built yet: openbim::component solids"
+            set solidsEntry to the bim ifcx model member (the string form of "solids") of record
+            if solidsEntry != (0 as a pointer to a JSON value):
+                set fault to (add bim ifcx model solids of solidsEntry into (the address of solids))
         if (the length of fault) > 0:
             return fault
-        append (@intrinsic("construct", a bim component record, id's value, (the bim ifcx model text (the string form of "name") of record), parts, a cad topology list of a bim solid part record, 0, a cad topology list of a bim component connector record)) to (modelValue's components's values)
+        append (@intrinsic("construct", a bim component record, id's value, (the bim ifcx model text (the string form of "name") of record), parts, solids, role, connectors)) to (modelValue's components's values)
         return the string form of ""
 
 # ---------------------------------------------------------------- the document

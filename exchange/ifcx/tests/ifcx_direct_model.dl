@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MPL-2.0
 # The direct IfcX construction (#161, step 3) builds the same model as the
-# text route: one level, a wall type with two layers, and a wall carrying a
-# base offset and a top level. The two routes are compared field by field,
-# not byte for byte.
+# text route: one level, a wall type with two layers, a wall carrying a base
+# offset and a top level, and a component with parts, solids and connectors.
+# The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
 import exchange/ifcx/bim_ifcx_read.dl
@@ -69,6 +69,35 @@ append (@intrinsic("construct", a bim sketch record, partLineId, 0 as a 64 bit i
 set componentId to add bim component named (the string form of "Frame") to target
 ignore set bim component componentId contents to parts in target
 free parts
+
+# Its solids and connectors: a box, an extrusion and a mesh, and two pipe
+# connectors.
+set noProfile to an empty list of a cad vector2
+ignore add bim solid of kind bim box solid as bim add operation at (a cad vector3 with x 0.0, y 0.0 and z 0.0) sized (a cad vector3 with x 1.0, y 0.5 and z 0.1) turned 0.0 along noProfile of (the string form of "timber") to component componentId in target
+free noProfile
+set solidProfile to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to solidProfile
+append (a cad vector2 with x 1.0 and y 0.0) to solidProfile
+append (a cad vector2 with x 0.0 and y 1.0) to solidProfile
+ignore add bim solid of kind bim extrusion solid as bim subtract operation at (a cad vector3 with x 0.0, y 0.0 and z 0.2) sized (a cad vector3 with x 1.0, y 1.0 and z 0.5) turned 0.25 along solidProfile of (the string form of "steel") to component componentId in target
+free solidProfile
+ignore add bim connector to component componentId as bim terminal component at (a cad vector3 with x 0.5, y 0.0 and z 0.05) pointing (a cad vector3 with x 0.0, y 0.0 and z -1.0) sized 0.015 for bim pipe role in target
+ignore add bim connector to component componentId as bim terminal component at (a cad vector3 with x 0.5, y 0.5 and z 0.05) pointing (a cad vector3 with x 1.0, y 0.0 and z 0.0) sized 0.02 for bim pipe role in target
+
+# A mesh part, whose points and faces the text route writes as two lists.
+set frame to the item at 0 in (modelValue's components's values)
+set solids to the cad clone of frame's solids
+set meshPoints to a cad topology list of a cad vector3
+append (a cad vector3 with x 0.0, y 0.0 and z 0.0) to (meshPoints's values)
+append (a cad vector3 with x 1.0, y 0.0 and z 0.0) to (meshPoints's values)
+append (a cad vector3 with x 0.0, y 1.0 and z 0.0) to (meshPoints's values)
+set meshFaces to a cad topology list of an integer
+append 3 to (meshFaces's values)
+append 0 to (meshFaces's values)
+append 1 to (meshFaces's values)
+append 2 to (meshFaces's values)
+append (@intrinsic("construct", a bim solid part record, bim mesh solid, bim add operation, (a cad vector3 with x 0.0, y 0.0 and z 0.6), (a cad vector3 with x 0.0, y 0.0 and z 0.0), 0.0, a cad topology list of a cad vector2, (the string form of "generic"), meshPoints, meshFaces)) to (solids's values)
+replace item at index 0 in (modelValue's components's values) with (@intrinsic("construct", a bim component record, frame's id, frame's name, frame's sketches, solids, frame's role, frame's connectors))
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -339,6 +368,114 @@ append (the string form of directPartLine's kind) to pieces
 append (the string form of (the length of (directPartLine's points's values))) to pieces
 append (the string form of directPartLine's height) to pieces
 print ((the string form of "direct part line: ") + (pieces joined with " ")) as a line
+clear pieces
+
+# The solids and connectors of the component, read from the same texts.
+set textSolids to textComponent's solids's values
+set directSolids to directComponent's solids's values
+set textConnectors to textComponent's connectors's values
+set directConnectors to directComponent's connectors's values
+print ((the string form of "text solids: ") + (the string form of (the length of textSolids))) as a line
+print ((the string form of "direct solids: ") + (the string form of (the length of directSolids))) as a line
+print ((the string form of "text connectors: ") + (the string form of (the length of textConnectors))) as a line
+print ((the string form of "direct connectors: ") + (the string form of (the length of directConnectors))) as a line
+print ((the string form of "text component role: ") + (the string form of textComponent's role)) as a line
+print ((the string form of "direct component role: ") + (the string form of directComponent's role)) as a line
+set textBox to the item at 0 in textSolids
+set directBox to the item at 0 in directSolids
+set textWedge to the item at 1 in textSolids
+set directWedge to the item at 1 in directSolids
+set textMeshPart to the item at 2 in textSolids
+set directMeshPart to the item at 2 in directSolids
+append (the string form of textBox's kind) to pieces
+append (the string form of textBox's operation) to pieces
+append (the string form of (textBox's origin's z)) to pieces
+append (the string form of (textBox's size's x)) to pieces
+append (the string form of textBox's angle) to pieces
+append (the string form of (the length of (textBox's profile's values))) to pieces
+append textBox's material to pieces
+append (the string form of (the length of (textBox's points's values))) to pieces
+append (the string form of (the length of (textBox's faces's values))) to pieces
+print ((the string form of "text solid 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directBox's kind) to pieces
+append (the string form of directBox's operation) to pieces
+append (the string form of (directBox's origin's z)) to pieces
+append (the string form of (directBox's size's x)) to pieces
+append (the string form of directBox's angle) to pieces
+append (the string form of (the length of (directBox's profile's values))) to pieces
+append directBox's material to pieces
+append (the string form of (the length of (directBox's points's values))) to pieces
+append (the string form of (the length of (directBox's faces's values))) to pieces
+print ((the string form of "direct solid 0: ") + (pieces joined with " ")) as a line
+clear pieces
+set textWedgeCorner to the item at 1 in (textWedge's profile's values)
+set directWedgeCorner to the item at 1 in (directWedge's profile's values)
+append (the string form of textWedge's kind) to pieces
+append (the string form of textWedge's operation) to pieces
+append (the string form of (textWedge's origin's z)) to pieces
+append (the string form of (textWedge's size's z)) to pieces
+append (the string form of textWedge's angle) to pieces
+append (the string form of (the length of (textWedge's profile's values))) to pieces
+append (the string form of textWedgeCorner's x) to pieces
+append textWedge's material to pieces
+print ((the string form of "text solid 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directWedge's kind) to pieces
+append (the string form of directWedge's operation) to pieces
+append (the string form of (directWedge's origin's z)) to pieces
+append (the string form of (directWedge's size's z)) to pieces
+append (the string form of directWedge's angle) to pieces
+append (the string form of (the length of (directWedge's profile's values))) to pieces
+append (the string form of directWedgeCorner's x) to pieces
+append directWedge's material to pieces
+print ((the string form of "direct solid 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textMeshPart's kind) to pieces
+append (the string form of (the length of (textMeshPart's points's values))) to pieces
+append (the string form of (the length of (textMeshPart's faces's values))) to pieces
+append (the string form of (the item at 0 in (textMeshPart's faces's values))) to pieces
+append (the string form of (the item at 1 in (textMeshPart's faces's values))) to pieces
+append textMeshPart's material to pieces
+print ((the string form of "text solid 2: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directMeshPart's kind) to pieces
+append (the string form of (the length of (directMeshPart's points's values))) to pieces
+append (the string form of (the length of (directMeshPart's faces's values))) to pieces
+append (the string form of (the item at 0 in (directMeshPart's faces's values))) to pieces
+append (the string form of (the item at 1 in (directMeshPart's faces's values))) to pieces
+append directMeshPart's material to pieces
+print ((the string form of "direct solid 2: ") + (pieces joined with " ")) as a line
+clear pieces
+set textConnector to the item at 0 in textConnectors
+set directConnector to the item at 0 in directConnectors
+set textOtherConnector to the item at 1 in textConnectors
+set directOtherConnector to the item at 1 in directConnectors
+append (the string form of (textConnector's spot's x)) to pieces
+append (the string form of (textConnector's spot's z)) to pieces
+append (the string form of (textConnector's direction's z)) to pieces
+append (the string form of textConnector's size) to pieces
+append (the string form of textConnector's role) to pieces
+print ((the string form of "text connector 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (directConnector's spot's x)) to pieces
+append (the string form of (directConnector's spot's z)) to pieces
+append (the string form of (directConnector's direction's z)) to pieces
+append (the string form of directConnector's size) to pieces
+append (the string form of directConnector's role) to pieces
+print ((the string form of "direct connector 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (textOtherConnector's spot's y)) to pieces
+append (the string form of (textOtherConnector's direction's x)) to pieces
+append (the string form of textOtherConnector's size) to pieces
+append (the string form of textOtherConnector's role) to pieces
+print ((the string form of "text connector 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (directOtherConnector's spot's y)) to pieces
+append (the string form of (directOtherConnector's direction's x)) to pieces
+append (the string form of directOtherConnector's size) to pieces
+append (the string form of directOtherConnector's role) to pieces
+print ((the string form of "direct connector 1: ") + (pieces joined with " ")) as a line
 free pieces
 
 # A record kind this module does not build yet is refused by name, not dropped.
@@ -369,11 +506,17 @@ set badTopWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wal
 set fromBadTopWall to the bim ifcx model of badTopWall
 print ((the string form of "bad top wall: ") + fromBadTopWall's message) as a line
 
-# The new kinds keep the text parser's words, and their unbuilt members are
-# refused by name.
+# The new kinds keep the text parser's words: a crossed face, a short
+# connector, an unknown solid kind and a face that names a missing point.
 set crossedFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::sketch\":{\"id\":1,\"level\":1,\"kind\":1,\"height\":0,\"points\":[[0,0],[1,1],[1,0],[0,1]],\"text\":\"\"}}}]}"
 set fromCrossedFace to the bim ifcx model of crossedFace
 print ((the string form of "crossed face: ") + fromCrossedFace's message) as a line
-set connectedComponent to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"connectors\":[]}}}]}"
-set fromConnectedComponent to the bim ifcx model of connectedComponent
-print ((the string form of "connected component: ") + fromConnectedComponent's message) as a line
+set shortConnector to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"role\":1,\"connectors\":[[0,0,0,0,0,-1,0.015]]}}}]}"
+set fromShortConnector to the bim ifcx model of shortConnector
+print ((the string form of "short connector: ") + fromShortConnector's message) as a line
+set unknownSolid to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"solids\":[{\"kind\":9,\"operation\":0,\"origin\":[0,0,0],\"size\":[1,1,1],\"angle\":0,\"profile\":[],\"material\":\"timber\"}]}}}]}"
+set fromUnknownSolid to the bim ifcx model of unknownSolid
+print ((the string form of "unknown solid: ") + fromUnknownSolid's message) as a line
+set lostFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"solids\":[{\"kind\":4,\"operation\":0,\"origin\":[0,0,0],\"size\":[0,0,0],\"angle\":0,\"material\":\"generic\",\"points\":[[0,0,0],[1,0,0]],\"faces\":[3,0,1,2]}]}}}]}"
+set fromLostFace to the bim ifcx model of lostFace
+print ((the string form of "lost face: ") + fromLostFace's message) as a line
