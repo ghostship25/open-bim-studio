@@ -156,6 +156,26 @@ text connector 0: 0.5 0.05 -1 0.015 4
 direct connector 0: 0.5 0.05 -1 0.015 4
 text connector 1: 0.5 1 0.02 4
 direct connector 1: 0.5 1 0.02 4
+text instances: 1
+direct instances: 1
+text instance: 17 16 1 1 2 0.5 -1
+direct instance: 17 16 1 1 2 0.5 -1
+text meshes: 1
+direct meshes: 1
+text mesh: 18 1 4 4 1 2
+direct mesh: 18 1 4 4 1 2
+text linear types: 2
+direct linear types: 2
+text linear type 0: 19 Beton 300x300 0 0.3 0.3 false concrete
+direct linear type 0: 19 Beton 300x300 0 0.3 0.3 false concrete
+text linear type 1: 20 Staal rond 100 4 0.1 0.1 true stainless steel
+direct linear type 1: 20 Staal rond 100 4 0.1 0.1 true stainless steel
+text linears: 2
+direct linears: 2
+text linear 0: 21 19 1 2 0 3 0.3 0 1 1
+direct linear 0: 21 19 1 2 0 3 0.3 0 1 1
+text linear 1: 22 20 1 0 0.5 0.8 0 0.1 1.2 0.8
+direct linear 1: 22 20 1 0 0.5 0.8 0 0.1 1.2 0.8
 refused kind: false not built yet: openbim::stair
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
@@ -167,3 +187,8 @@ crossed face: a face outline must not cross itself
 short connector: malformed connector
 unknown solid: unknown solid kind or operation
 lost face: a solid's face refers to a missing point
+thin mesh: a mesh needs points and faces
+lost mesh face: a mesh face refers to a missing point
+flat linear: a linear element needs an axis
+bad linear type: a linear type needs a role and a profile
+lost instance: malformed instance

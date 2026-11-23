@@ -6,8 +6,9 @@
 # level, a wall type with its layers, and a wall with its base offset and top
 # level; then the opening types and their openings, the slabs (and the plates
 # of a planar type), the grid lines, the dimensions, the sketches and the
-# components with their parts, their connectors and their solids. A record kind
-# this module does not build yet is refused by name, so content is never
+# components with their parts, their connectors and their solids; then the
+# instances, the free meshes, the linear types and the linear elements. A record
+# kind this module does not build yet is refused by name, so content is never
 # silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
@@ -689,6 +690,110 @@ local function add bim ifcx model component {a pointer to a JSON value:record} i
         append (@intrinsic("construct", a bim component record, id's value, (the bim ifcx model text (the string form of "name") of record), parts, solids, role, connectors)) to (modelValue's components's values)
         return the string form of ""
 
+# An instance: a component placed on its storey, in metres on the plan and
+# turned `angle`, drawn in one view or in every plan of its storey, as the text
+# parser reads an instance line.
+local function add bim ifcx model instance {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set componentId to the bim ifcx model whole (the string form of "component") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set originX to the bim ifcx model number 0 of (the string form of "origin") in record
+        set originY to the bim ifcx model number 1 of (the string form of "origin") in record
+        set angle to the bim ifcx model real (the string form of "angle") of record
+        set fieldsValid to ((id's valid and componentId's valid) and levelId's valid) and ((originX's valid and originY's valid) and angle's valid)
+        if fieldsValid = false:
+            return the string form of "malformed instance"
+        if (bim ifcx model id id's value follows (modelValue's instances's values)) = false:
+            return the string form of "instance ids out of order"
+        # The view it is drawn in; a name that is not an id is no view, as the
+        # line's eighth field is not.
+        set viewId to the bim refused id
+        set view to the bim ifcx model whole (the string form of "view") of record
+        if view's valid:
+            set viewId to view's value
+        append (@intrinsic("construct", a bim instance record, id's value, componentId's value, levelId's value, (a cad vector2 with x originX's value and y originY's value), angle's value, viewId)) to (modelValue's instances's values)
+        return the string form of ""
+
+# A free mesh: its points, then each face as its corner count and corners, the
+# arrays already counting them, as the text parser reads a mesh line. A face
+# must fit the points it names.
+local function add bim ifcx model mesh {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set pointsEntry to the bim ifcx model member (the string form of "points") of record
+        set facesEntry to the bim ifcx model member (the string form of "faces") of record
+        set listed to false
+        if (pointsEntry != (0 as a pointer to a JSON value)) and (facesEntry != (0 as a pointer to a JSON value)):
+            set listed to ((the kind of pointsEntry) = the JSON array kind) and ((the kind of facesEntry) = the JSON array kind)
+        if ((id's valid and levelId's valid) and listed) = false:
+            return the string form of "malformed mesh"
+        set pointCount to the length of pointsEntry
+        set entryCount to the length of facesEntry
+        if ((pointCount < 3) or (pointCount > 1000000)) or ((entryCount < 4) or (entryCount > 10000000)):
+            return the string form of "a mesh needs points and faces"
+        if (bim ifcx model id id's value follows (modelValue's meshes's values)) = false:
+            return the string form of "mesh ids out of order"
+        set points to a cad topology list of a cad vector3
+        if (add bim ifcx model mesh points of pointsEntry to (the address of points)) = false:
+            return the string form of "malformed mesh point"
+        set faces to a cad topology list of an integer
+        if (add bim ifcx model faces of facesEntry to (the address of faces)) = false:
+            return the string form of "malformed mesh face"
+        if (bim mesh faces (faces's values) fit pointCount) = false:
+            return the string form of "a mesh face refers to a missing point"
+        append (@intrinsic("construct", a bim mesh record, id's value, levelId's value, points, faces)) to (modelValue's meshes's values)
+        return the string form of ""
+
+# A linear type: the role and the profile its elements share, as a lineartype
+# line writes them. The line writes its material's spaces as underscores.
+local function add bim ifcx model linear type {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set role to the bim ifcx model whole (the string form of "role") of record
+        set width to the bim ifcx model real (the string form of "width") of record
+        set depth to the bim ifcx model real (the string form of "depth") of record
+        set round to bim ifcx model flag (the string form of "round") of record
+        if ((((id's valid and role's valid) and width's valid) and depth's valid) and round's valid) = false:
+            return the string form of "malformed lineartype"
+        if (bim ifcx model id id's value follows (modelValue's linearTypes's values)) = false:
+            return the string form of "lineartype ids out of order"
+        set roleCode to role's value as an integer
+        if ((width's value <= 0.0) or (depth's value <= 0.0)) or ((roleCode < 0) or (roleCode > bim pile role)):
+            return the string form of "a linear type needs a role and a profile"
+        set material to (the bim ifcx model text (the string form of "material") of record) with "_" replaced by " "
+        append (@intrinsic("construct", a bim linear type record, id's value, (the bim ifcx model text (the string form of "name") of record), roleCode, width's value, depth's value, round's value = (1 as a 64 bit integer), material)) to (modelValue's linearTypes's values)
+        return the string form of ""
+
+# A linear element: its axis, the angle its profile is turned about it, and the
+# twist and taper of its finish, which a line writes together or not at all.
+local function add bim ifcx model linear {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set typeId to the bim ifcx model whole (the string form of "type") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set start to the bim ifcx model point (the string form of "start") of record
+        set finish to the bim ifcx model point (the string form of "finish") of record
+        set angle to the bim ifcx model real (the string form of "angle") of record
+        set endsValid to (start's valid and finish's valid) and angle's valid
+        if ((id's valid and typeId's valid) and levelId's valid) and endsValid = false:
+            return the string form of "malformed linear"
+        if (bim ifcx model id id's value follows (modelValue's linears's values)) = false:
+            return the string form of "linear ids out of order"
+        if (the cad length of (the cad difference of finish's point and start's point)) < 0.001:
+            return the string form of "a linear element needs an axis"
+        set twistValue to 0.0
+        set taperValue to a cad vector2 with x 1.0 and y 1.0
+        set twist to the bim ifcx model real (the string form of "twist") of record
+        set taperX to the bim ifcx model number 0 of (the string form of "taper") in record
+        set taperY to the bim ifcx model number 1 of (the string form of "taper") in record
+        if (twist's valid and taperX's valid) and taperY's valid:
+            set twistValue to twist's value
+            set taperValue to a cad vector2 with x taperX's value and y taperY's value
+        append (@intrinsic("construct", a bim linear record, id's value, typeId's value, levelId's value, start's point, finish's point, angle's value, twistValue, taperValue)) to (modelValue's linears's values)
+        return the string form of ""
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -745,6 +850,14 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model element sketch record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::component"):
                                 set fault to (add bim ifcx model component record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::instance"):
+                                set fault to (add bim ifcx model instance record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::mesh"):
+                                set fault to (add bim ifcx model mesh record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::lineartype"):
+                                set fault to (add bim ifcx model linear type record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::linear"):
+                                set fault to (add bim ifcx model linear record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)

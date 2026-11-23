@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: MPL-2.0
 # The direct IfcX construction (#161, step 3) builds the same model as the
 # text route: one level, a wall type with two layers, a wall carrying a base
-# offset and a top level, and a component with parts, solids and connectors.
+# offset and a top level, a component with parts, solids and connectors, and
+# an instance, a free mesh, two linear types and two linear elements.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -98,6 +99,29 @@ append 1 to (meshFaces's values)
 append 2 to (meshFaces's values)
 append (@intrinsic("construct", a bim solid part record, bim mesh solid, bim add operation, (a cad vector3 with x 0.0, y 0.0 and z 0.6), (a cad vector3 with x 0.0, y 0.0 and z 0.0), 0.0, a cad topology list of a cad vector2, (the string form of "generic"), meshPoints, meshFaces)) to (solids's values)
 replace item at index 0 in (modelValue's components's values) with (@intrinsic("construct", a bim component record, frame's id, frame's name, frame's sketches, solids, frame's role, frame's connectors))
+
+# The next group of kinds: an instance of the component, a free mesh, two
+# linear types (one round, of a two-word material) and two linear elements,
+# one of them twisted and tapered.
+ignore place bim component componentId on storey at (a cad vector2 with x 1.0 and y 2.0) turned 0.5 to target
+set freePoints to an empty list of a cad vector3
+append (a cad vector3 with x 0.0, y 0.0 and z 0.0) to freePoints
+append (a cad vector3 with x 1.0, y 0.0 and z 0.0) to freePoints
+append (a cad vector3 with x 1.0, y 1.0 and z 0.0) to freePoints
+append (a cad vector3 with x 0.0, y 1.0 and z 0.0) to freePoints
+set freeFaces to an empty list of an integer
+append 3 to freeFaces
+append 0 to freeFaces
+append 1 to freeFaces
+append 2 to freeFaces
+ignore add bim mesh on storey with freePoints and freeFaces to target
+free freePoints
+free freeFaces
+set columnType to add bim linear type named (the string form of "Kolom beton 300x300") as role bim column role sized 0.3 by 0.3 round false of (the string form of "concrete") to target
+set pipeType to add bim linear type named (the string form of "Leiding 100") as role bim pipe role sized 0.1 by 0.1 round true of (the string form of "stainless steel") to target
+ignore add bim linear typed columnType on storey from (a cad vector3 with x 2.0, y 2.0 and z 0.0) to (a cad vector3 with x 2.0, y 2.0 and z 3.0) turned 0.3 to target
+set pipe to add bim linear typed pipeType on storey from (a cad vector3 with x 0.0, y 5.0 and z 0.5) to (a cad vector3 with x 4.0, y 8.0 and z 0.8) turned 0.0 to target
+ignore shape bim linear pipe twisting 0.1 tapering (a cad vector2 with x 1.2 and y 0.8) in target
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -478,6 +502,112 @@ append (the string form of directOtherConnector's role) to pieces
 print ((the string form of "direct connector 1: ") + (pieces joined with " ")) as a line
 free pieces
 
+# The instances, the mesh and the linears, read from the same texts.
+set pieces to an empty list of a string
+set textInstances to textModel's instances's values
+set directInstances to directModel's instances's values
+print ((the string form of "text instances: ") + (the string form of (the length of textInstances))) as a line
+print ((the string form of "direct instances: ") + (the string form of (the length of directInstances))) as a line
+set textInstance to the item at 0 in textInstances
+set directInstance to the item at 0 in directInstances
+append (the string form of textInstance's id) to pieces
+append (the string form of textInstance's componentId) to pieces
+append (the string form of textInstance's levelId) to pieces
+append (the string form of (textInstance's origin's x)) to pieces
+append (the string form of (textInstance's origin's y)) to pieces
+append (the string form of textInstance's angle) to pieces
+append (the string form of textInstance's viewId) to pieces
+print ((the string form of "text instance: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directInstance's id) to pieces
+append (the string form of directInstance's componentId) to pieces
+append (the string form of directInstance's levelId) to pieces
+append (the string form of (directInstance's origin's x)) to pieces
+append (the string form of (directInstance's origin's y)) to pieces
+append (the string form of directInstance's angle) to pieces
+append (the string form of directInstance's viewId) to pieces
+print ((the string form of "direct instance: ") + (pieces joined with " ")) as a line
+clear pieces
+set textMeshes to textModel's meshes's values
+set directMeshes to directModel's meshes's values
+print ((the string form of "text meshes: ") + (the string form of (the length of textMeshes))) as a line
+print ((the string form of "direct meshes: ") + (the string form of (the length of directMeshes))) as a line
+set textMesh to the item at 0 in textMeshes
+set directMesh to the item at 0 in directMeshes
+append (the string form of textMesh's id) to pieces
+append (the string form of textMesh's levelId) to pieces
+append (the string form of (the length of (textMesh's vertices's values))) to pieces
+append (the string form of (the length of (textMesh's faces's values))) to pieces
+append (the string form of (the item at 2 in (textMesh's vertices's values))'s x) to pieces
+append (the string form of (the item at 3 in (textMesh's faces's values))) to pieces
+print ((the string form of "text mesh: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directMesh's id) to pieces
+append (the string form of directMesh's levelId) to pieces
+append (the string form of (the length of (directMesh's vertices's values))) to pieces
+append (the string form of (the length of (directMesh's faces's values))) to pieces
+append (the string form of (the item at 2 in (directMesh's vertices's values))'s x) to pieces
+append (the string form of (the item at 3 in (directMesh's faces's values))) to pieces
+print ((the string form of "direct mesh: ") + (pieces joined with " ")) as a line
+clear pieces
+set textLinearTypes to textModel's linearTypes's values
+set directLinearTypes to directModel's linearTypes's values
+print ((the string form of "text linear types: ") + (the string form of (the length of textLinearTypes))) as a line
+print ((the string form of "direct linear types: ") + (the string form of (the length of directLinearTypes))) as a line
+loop typeCursor from 0 to the length of textLinearTypes:
+    set textLinearType to the item at typeCursor in textLinearTypes
+    set directLinearType to the item at typeCursor in directLinearTypes
+    clear pieces
+    append (the string form of textLinearType's id) to pieces
+    append textLinearType's name to pieces
+    append (the string form of textLinearType's role) to pieces
+    append (the string form of textLinearType's width) to pieces
+    append (the string form of textLinearType's depth) to pieces
+    append (the string form of textLinearType's round) to pieces
+    append textLinearType's material to pieces
+    print (((the string form of "text linear type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directLinearType's id) to pieces
+    append directLinearType's name to pieces
+    append (the string form of directLinearType's role) to pieces
+    append (the string form of directLinearType's width) to pieces
+    append (the string form of directLinearType's depth) to pieces
+    append (the string form of directLinearType's round) to pieces
+    append directLinearType's material to pieces
+    print (((the string form of "direct linear type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textLinears to textModel's linears's values
+set directLinears to directModel's linears's values
+print ((the string form of "text linears: ") + (the string form of (the length of textLinears))) as a line
+print ((the string form of "direct linears: ") + (the string form of (the length of directLinears))) as a line
+loop linearCursor from 0 to the length of textLinears:
+    set textLinear to the item at linearCursor in textLinears
+    set directLinear to the item at linearCursor in directLinears
+    clear pieces
+    append (the string form of textLinear's id) to pieces
+    append (the string form of textLinear's typeId) to pieces
+    append (the string form of textLinear's levelId) to pieces
+    append (the string form of (textLinear's start's x)) to pieces
+    append (the string form of (textLinear's start's z)) to pieces
+    append (the string form of (textLinear's finish's z)) to pieces
+    append (the string form of textLinear's angle) to pieces
+    append (the string form of textLinear's twist) to pieces
+    append (the string form of (textLinear's taper's x)) to pieces
+    append (the string form of (textLinear's taper's y)) to pieces
+    print (((the string form of "text linear ") + (the string form of linearCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directLinear's id) to pieces
+    append (the string form of directLinear's typeId) to pieces
+    append (the string form of directLinear's levelId) to pieces
+    append (the string form of (directLinear's start's x)) to pieces
+    append (the string form of (directLinear's start's z)) to pieces
+    append (the string form of (directLinear's finish's z)) to pieces
+    append (the string form of directLinear's angle) to pieces
+    append (the string form of directLinear's twist) to pieces
+    append (the string form of (directLinear's taper's x)) to pieces
+    append (the string form of (directLinear's taper's y)) to pieces
+    print (((the string form of "direct linear ") + (the string form of linearCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
 set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
@@ -520,3 +650,20 @@ print ((the string form of "unknown solid: ") + fromUnknownSolid's message) as a
 set lostFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"solids\":[{\"kind\":4,\"operation\":0,\"origin\":[0,0,0],\"size\":[0,0,0],\"angle\":0,\"material\":\"generic\",\"points\":[[0,0,0],[1,0,0]],\"faces\":[3,0,1,2]}]}}}]}"
 set fromLostFace to the bim ifcx model of lostFace
 print ((the string form of "lost face: ") + fromLostFace's message) as a line
+
+# The new kinds keep the text parser's words too.
+set thinMesh to the string form of "{\"data\":[{\"attributes\":{\"openbim::mesh\":{\"id\":1,\"level\":1,\"points\":[[0,0,0],[1,0,0]],\"faces\":[3,0,1,0]}}}]}"
+set fromThinMesh to the bim ifcx model of thinMesh
+print ((the string form of "thin mesh: ") + fromThinMesh's message) as a line
+set lostMeshFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::mesh\":{\"id\":1,\"level\":1,\"points\":[[0,0,0],[1,0,0],[0,1,0]],\"faces\":[3,0,1,5]}}}]}"
+set fromLostMeshFace to the bim ifcx model of lostMeshFace
+print ((the string form of "lost mesh face: ") + fromLostMeshFace's message) as a line
+set flatLinear to the string form of "{\"data\":[{\"attributes\":{\"openbim::linear\":{\"id\":1,\"type\":1,\"level\":1,\"start\":[1,1,1],\"finish\":[1,1,1],\"angle\":0}}}]}"
+set fromFlatLinear to the bim ifcx model of flatLinear
+print ((the string form of "flat linear: ") + fromFlatLinear's message) as a line
+set badLinearType to the string form of "{\"data\":[{\"attributes\":{\"openbim::lineartype\":{\"id\":1,\"role\":9,\"width\":0.3,\"depth\":0.3,\"round\":0,\"material\":\"concrete\",\"name\":\"Kolom\"}}}]}"
+set fromBadLinearType to the bim ifcx model of badLinearType
+print ((the string form of "bad linear type: ") + fromBadLinearType's message) as a line
+set lostInstance to the string form of "{\"data\":[{\"attributes\":{\"openbim::instance\":{\"id\":1,\"component\":2,\"level\":1,\"origin\":[1,2]}}}]}"
+set fromLostInstance to the bim ifcx model of lostInstance
+print ((the string form of "lost instance: ") + fromLostInstance's message) as a line
