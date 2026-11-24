@@ -1072,8 +1072,8 @@ print ((the string form of "bad paper book: ") + fromBadPaperBook's message) as 
 
 # The stairs, the railings and the curtain walls keep the text parser's words
 # too: a stair without its risers, two out of order and one on a missing storey,
-# a railing of one point, two out of order and one with a bad point, a curtain
-# without its material and two out of order.
+# a railing without its host and one of a single point, two out of order and one
+# with a bad point, a curtain without its material and two out of order.
 set unfinishedStair to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2}}}]}"
 set fromUnfinishedStair to the bim ifcx model of unfinishedStair
 print ((the string form of "unfinished stair: ") + fromUnfinishedStair's message) as a line
@@ -1083,6 +1083,9 @@ print ((the string form of "ordered stairs: ") + fromOrderedStairs's message) as
 set lostStairLevel to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":9,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}}]}"
 set fromLostStairLevel to the bim ifcx model of lostStairLevel
 print ((the string form of "lost stair level: ") + fromLostStairLevel's message) as a line
+set unfinishedRailing to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}}]}"
+set fromUnfinishedRailing to the bim ifcx model of unfinishedRailing
+print ((the string form of "unfinished railing: ") + fromUnfinishedRailing's message) as a line
 set singlePointRailing to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0]],\"material\":\"steel\"}}}]}"
 set fromSinglePointRailing to the bim ifcx model of singlePointRailing
 print ((the string form of "single point railing: ") + fromSinglePointRailing's message) as a line

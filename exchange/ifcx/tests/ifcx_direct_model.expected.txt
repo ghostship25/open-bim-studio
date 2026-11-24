@@ -251,6 +251,7 @@ bad paper book: a sheetview's paper is A0 to A4
 unfinished stair: malformed stair
 ordered stairs: stair ids out of order
 lost stair level: a stair refers to a missing level
+unfinished railing: malformed railing
 single point railing: malformed railing
 ordered railings: railing ids out of order
 bad railing point: malformed railing point
