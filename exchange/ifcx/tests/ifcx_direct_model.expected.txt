@@ -216,7 +216,33 @@ text curtains: 1
 direct curtains: 1
 text curtain 0: 33 1 0 4 3 1 1.5 glass 0.5
 direct curtain 0: 33 1 0 4 3 1 1.5 glass 0.5
-refused kind: false not built yet: openbim::system
+text phases: 2
+direct phases: 2
+text phase 0: 34 Existing
+direct phase 0: 34 Existing
+text phase 1: 35 New construction
+direct phase 1: 35 New construction
+text phasings: 1
+direct phasings: 1
+text phasing 0: 3 35 -1
+direct phasing 0: 3 35 -1
+text systems: 1
+direct systems: 1
+text system 0: 36 Ventilation 3 2 3
+direct system 0: 36 Ventilation 3 2 3
+text settings: 2
+direct settings: 2
+text setting 0: 3 600000 2
+direct setting 0: 3 600000 2
+text setting 1: 31 500006 350
+direct setting 1: 31 500006 350
+text properties: 2
+direct properties: 2
+text property 0: 3|OBS_Test|Status|IfcLabel|new
+direct property 0: 3|OBS_Test|Status|IfcLabel|new
+text property 1: 3|Pset_WallCommon|FireRating|IfcLabel|60 min
+direct property 1: 3|Pset_WallCommon|FireRating|IfcLabel|60 min
+refused kind: false not built yet: openbim::fastenerCSG
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
 crossed plate: a plate outline must not cross itself
@@ -257,3 +283,11 @@ ordered railings: railing ids out of order
 bad railing point: malformed railing point
 unfinished curtain: malformed curtain
 ordered curtains: curtain ids out of order
+nameless phase: malformed phase
+ordered phases: phase ids out of order
+unfinished phasing: malformed phasing
+nameless system: malformed system
+bad member system: malformed system member
+bad discipline system: unknown discipline
+short setting pair: malformed settings
+short property line: malformed property

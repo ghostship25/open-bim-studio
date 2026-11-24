@@ -4,7 +4,8 @@
 # offset and a top level, a component with parts, solids and connectors, an
 # instance, a free mesh, two linear types and two linear elements, a space, a
 # tag and two views, a drawing type, a sheet with a view on it and a book of
-# sheets, a stair, a railing along it and a curtain wall.
+# sheets, a stair, a railing along it and a curtain wall, two phases with a
+# phasing, a building system, element settings and element properties.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -176,6 +177,20 @@ set railingId to the bim new id in target
 append (@intrinsic("construct", a bim railing record, railingId, storey, stairId, railingPoints, 1.0, (the string form of "steel"))) to (modelValue's railings's values)
 set curtainId to the bim new id in target
 append (@intrinsic("construct", a bim curtain record, curtainId, storey, (a cad vector2 with x 0.0 and y 0.0), (a cad vector2 with x 4.0 and y 0.0), 3.0, 1.0, 1.5, (the string form of "glass"), 0.5)) to (modelValue's curtains's values)
+
+# The next group of kinds: two phases with the wall's phasing, a ventilation
+# system of the wall and the stair, element settings and element properties
+# (one of them with a space in its set and its value).
+ignore add bim phase named (the string form of "Existing") to target
+set newPhase to add bim phase named (the string form of "New construction") to target
+set bim element wallRecord's id built in newPhase demolished in (the bim refused id) in target
+set systemId to add bim system named (the string form of "Ventilation") of discipline (bim ventilation discipline) to target
+ignore assign bim element wallRecord's id to system systemId in target
+ignore assign bim element stairId to system systemId in target
+set bim setting (bim opening rule setting) of wallRecord's id to (2 as a 64 bit integer) keeping true in target
+set bim setting (bim host depth setting) of stairId to (350 as a 64 bit integer) keeping true in target
+set bim property (the string form of "Status") of set (the string form of "OBS_Test") of wallRecord's id to (the string form of "new") typed (the string form of "IfcLabel") in target
+set bim property (the string form of "FireRating") of set (the string form of "Pset_WallCommon") of wallRecord's id to (the string form of "60 min") typed (the string form of "IfcLabel") in target
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -952,8 +967,98 @@ loop curtainCursor from 0 to the length of textCurtains:
     print (((the string form of "direct curtain ") + (the string form of curtainCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
 free pieces
 
+# The phases, the phasings, the building system, the settings and the
+# properties, read from the same texts.
+set pieces to an empty list of a string
+set textPhases to textModel's phases's values
+set directPhases to directModel's phases's values
+print ((the string form of "text phases: ") + (the string form of (the length of textPhases))) as a line
+print ((the string form of "direct phases: ") + (the string form of (the length of directPhases))) as a line
+loop phaseCursor from 0 to the length of textPhases:
+    set textPhase to the item at phaseCursor in textPhases
+    set directPhase to the item at phaseCursor in directPhases
+    print (((the string form of "text phase ") + (the string form of phaseCursor)) + ((the string form of ": ") + ((the string form of textPhase's id) + ((the string form of " ") + textPhase's name)))) as a line
+    print (((the string form of "direct phase ") + (the string form of phaseCursor)) + ((the string form of ": ") + ((the string form of directPhase's id) + ((the string form of " ") + directPhase's name)))) as a line
+set textPhasings to textModel's phasings's values
+set directPhasings to directModel's phasings's values
+print ((the string form of "text phasings: ") + (the string form of (the length of textPhasings))) as a line
+print ((the string form of "direct phasings: ") + (the string form of (the length of directPhasings))) as a line
+loop phasingCursor from 0 to the length of textPhasings:
+    set textPhasing to the item at phasingCursor in textPhasings
+    set directPhasing to the item at phasingCursor in directPhasings
+    clear pieces
+    append (the string form of textPhasing's id) to pieces
+    append (the string form of textPhasing's createdId) to pieces
+    append (the string form of textPhasing's demolishedId) to pieces
+    print (((the string form of "text phasing ") + (the string form of phasingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directPhasing's id) to pieces
+    append (the string form of directPhasing's createdId) to pieces
+    append (the string form of directPhasing's demolishedId) to pieces
+    print (((the string form of "direct phasing ") + (the string form of phasingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSystems to textModel's systems's values
+set directSystems to directModel's systems's values
+print ((the string form of "text systems: ") + (the string form of (the length of textSystems))) as a line
+print ((the string form of "direct systems: ") + (the string form of (the length of directSystems))) as a line
+loop systemCursor from 0 to the length of textSystems:
+    set textSystem to the item at systemCursor in textSystems
+    set directSystem to the item at systemCursor in directSystems
+    clear pieces
+    append (the string form of textSystem's id) to pieces
+    append textSystem's name to pieces
+    append (the string form of textSystem's discipline) to pieces
+    append (the string form of (the length of (textSystem's members's values))) to pieces
+    append (the string form of (the item at 0 in (textSystem's members's values))) to pieces
+    print (((the string form of "text system ") + (the string form of systemCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSystem's id) to pieces
+    append directSystem's name to pieces
+    append (the string form of directSystem's discipline) to pieces
+    append (the string form of (the length of (directSystem's members's values))) to pieces
+    append (the string form of (the item at 0 in (directSystem's members's values))) to pieces
+    print (((the string form of "direct system ") + (the string form of systemCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSettings to textModel's settings's values
+set directSettings to directModel's settings's values
+print ((the string form of "text settings: ") + (the string form of (the length of textSettings))) as a line
+print ((the string form of "direct settings: ") + (the string form of (the length of directSettings))) as a line
+loop settingCursor from 0 to the length of textSettings:
+    set textSetting to the item at settingCursor in textSettings
+    set directSetting to the item at settingCursor in directSettings
+    clear pieces
+    append (the string form of textSetting's elementId) to pieces
+    append (the string form of textSetting's code) to pieces
+    append (the string form of textSetting's value) to pieces
+    print (((the string form of "text setting ") + (the string form of settingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSetting's elementId) to pieces
+    append (the string form of directSetting's code) to pieces
+    append (the string form of directSetting's value) to pieces
+    print (((the string form of "direct setting ") + (the string form of settingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textProperties to textModel's properties's values
+set directProperties to directModel's properties's values
+print ((the string form of "text properties: ") + (the string form of (the length of textProperties))) as a line
+print ((the string form of "direct properties: ") + (the string form of (the length of directProperties))) as a line
+loop propertyCursor from 0 to the length of textProperties:
+    set textProperty to the item at propertyCursor in textProperties
+    set directProperty to the item at propertyCursor in directProperties
+    clear pieces
+    append (the string form of textProperty's elementId) to pieces
+    append textProperty's setName to pieces
+    append textProperty's name to pieces
+    append textProperty's valueType to pieces
+    append textProperty's value to pieces
+    print (((the string form of "text property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
+    clear pieces
+    append (the string form of directProperty's elementId) to pieces
+    append directProperty's setName to pieces
+    append directProperty's name to pieces
+    append directProperty's valueType to pieces
+    append directProperty's value to pieces
+    print (((the string form of "direct property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
-set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{}}}]}"
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::fastenerCSG\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
 print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
 
@@ -1101,3 +1206,33 @@ print ((the string form of "unfinished curtain: ") + fromUnfinishedCurtain's mes
 set orderedCurtains to the string form of "{\"data\":[{\"attributes\":{\"openbim::curtain\":{\"id\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}},{\"attributes\":{\"openbim::curtain\":{\"id\":1,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}}]}"
 set fromOrderedCurtains to the bim ifcx model of orderedCurtains
 print ((the string form of "ordered curtains: ") + fromOrderedCurtains's message) as a line
+
+# The phases, the phasings, the systems, the settings and the properties keep
+# the text parser's words too: a phase without a name and two out of order, a
+# phasing without both its phases, a system without a name, a member that is no
+# number, an unknown discipline, a settings pair that is no pair, and a
+# property line without its lengths.
+set namelessPhase to the string form of "{\"data\":[{\"attributes\":{\"openbim::phase\":{\"id\":1}}}]}"
+set fromNamelessPhase to the bim ifcx model of namelessPhase
+print ((the string form of "nameless phase: ") + fromNamelessPhase's message) as a line
+set orderedPhases to the string form of "{\"data\":[{\"attributes\":{\"openbim::phase\":{\"id\":2,\"name\":\"Later\"}}},{\"attributes\":{\"openbim::phase\":{\"id\":1,\"name\":\"Earlier\"}}}]}"
+set fromOrderedPhases to the bim ifcx model of orderedPhases
+print ((the string form of "ordered phases: ") + fromOrderedPhases's message) as a line
+set unfinishedPhasing to the string form of "{\"data\":[{\"attributes\":{\"openbim::phasing\":{\"element\":1,\"created\":1}}}]}"
+set fromUnfinishedPhasing to the bim ifcx model of unfinishedPhasing
+print ((the string form of "unfinished phasing: ") + fromUnfinishedPhasing's message) as a line
+set namelessSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":3,\"members\":[]}}}]}"
+set fromNamelessSystem to the bim ifcx model of namelessSystem
+print ((the string form of "nameless system: ") + fromNamelessSystem's message) as a line
+set badMemberSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":3,\"members\":[\"x\"],\"name\":\"Air\"}}}]}"
+set fromBadMemberSystem to the bim ifcx model of badMemberSystem
+print ((the string form of "bad member system: ") + fromBadMemberSystem's message) as a line
+set badDisciplineSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":9,\"members\":[],\"name\":\"Air\"}}}]}"
+set fromBadDisciplineSystem to the bim ifcx model of badDisciplineSystem
+print ((the string form of "bad discipline system: ") + fromBadDisciplineSystem's message) as a line
+set shortSettingPair to the string form of "{\"data\":[{\"attributes\":{\"openbim::settings\":{\"element\":1,\"pairs\":[[1]]}}}]}"
+set fromShortSettingPair to the bim ifcx model of shortSettingPair
+print ((the string form of "short setting pair: ") + fromShortSettingPair's message) as a line
+set shortPropertyLine to the string form of "{\"data\":[{\"attributes\":{\"openbim::properties\":{\"lines\":[\"property 1 3 2\"]}}}]}"
+set fromShortPropertyLine to the bim ifcx model of shortPropertyLine
+print ((the string form of "short property line: ") + fromShortPropertyLine's message) as a line

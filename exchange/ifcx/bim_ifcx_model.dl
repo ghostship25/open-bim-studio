@@ -9,9 +9,10 @@
 # components with their parts, their connectors and their solids; then the
 # instances, the free meshes, the linear types and the linear elements; then the
 # spaces, the tags and the views; then the drawing types, the sheets and their
-# books; and then the stairs, the railings and the curtain walls. A record kind
-# this module does not build yet is refused by name, so content is never
-# silently dropped.
+# books; then the stairs, the railings and the curtain walls; and then the
+# phases and the phasings, the building systems, the element settings and the
+# element properties. A record kind this module does not build yet is refused
+# by name, so content is never silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -1115,6 +1116,147 @@ local function add bim ifcx model curtain {a pointer to a JSON value:record} int
         append (@intrinsic("construct", a bim curtain record, id's value, levelId's value, (a cad vector2 with x startX's value and y startY's value), (a cad vector2 with x finishX's value and y finishY's value), height's value, bay's value, row's value, (the bim ifcx model text (the string form of "material") of record) with "_" replaced by " ", bulgeValue)) to (modelValue's curtains's values)
         return the string form of ""
 
+# A phase of the project: its place in the model's order and its name. The
+# refusals are the text parser's, in its order: the fields, and the id.
+local function add bim ifcx model phase {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set nameListed to record has JSON member named (the string form of "name")
+        if (id's valid and nameListed) = false:
+            return the string form of "malformed phase"
+        if (bim ifcx model id id's value follows (modelValue's phases's values)) = false:
+            return the string form of "phase ids out of order"
+        append (@intrinsic("construct", a bim phase record, id's value, (the bim ifcx model text (the string form of "name") of record))) to (modelValue's phases's values)
+        return the string form of ""
+
+# When an element was built and demolished: two phase ids, the refused id for
+# the last phase and for never. The refusals are the text parser's, in its
+# order: the fields, and the element.
+local function add bim ifcx model phasing {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set element to the bim ifcx model whole (the string form of "element") of record
+        set created to the bim ifcx model whole (the string form of "created") of record
+        set demolished to the bim ifcx model whole (the string form of "demolished") of record
+        if ((element's valid and created's valid) and demolished's valid) = false:
+            return the string form of "malformed phasing"
+        if (bim ifcx model id element's value follows (modelValue's phasings's values)) = false:
+            return the string form of "phasings out of order"
+        append (@intrinsic("construct", a bim phasing record, element's value, created's value, demolished's value)) to (modelValue's phasings's values)
+        return the string form of ""
+
+# A building system: its discipline and the elements assigned to it. The
+# refusals are the text parser's, in its order: the fields, the id, each
+# member, and the discipline.
+local function add bim ifcx model system {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set discipline to the bim ifcx model whole (the string form of "discipline") of record
+        set nameListed to record has JSON member named (the string form of "name")
+        set membersEntry to the bim ifcx model member (the string form of "members") of record
+        set membersListed to false
+        if (membersEntry != (0 as a pointer to a JSON value)) and ((the kind of membersEntry) = the JSON array kind):
+            set membersListed to true
+        set memberCount to 1000001
+        if membersListed:
+            set memberCount to the length of membersEntry
+        set fieldsValid to ((id's valid and discipline's valid) and nameListed) and (membersListed and (memberCount <= 1000000))
+        if fieldsValid = false:
+            return the string form of "malformed system"
+        if (bim ifcx model id id's value follows (modelValue's systems's values)) = false:
+            return the string form of "system ids out of order"
+        set members to a cad topology list of a 64 bit integer
+        loop cursor from 0 to memberCount:
+            set memberReading to the bim whole reading of (the text of (the JSON value at index cursor in membersEntry))
+            if memberReading's valid = false:
+                return the string form of "malformed system member"
+            append memberReading's value to (members's values)
+        set disciplineCode to discipline's value as an integer
+        if (disciplineCode < bim water discipline) or (disciplineCode > bim electrical discipline):
+            return the string form of "unknown discipline"
+        append (@intrinsic("construct", a bim system record, id's value, (the bim ifcx model text (the string form of "name") of record), disciplineCode, members)) to (modelValue's systems's values)
+        return the string form of ""
+
+# An element's settings: pairs of code and whole-number value, which the model
+# keeps once per owner and code, so a code given twice keeps its first value,
+# as the text parser reads them. The refusal is the text parser's.
+local function add bim ifcx model settings {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set element to the bim ifcx model whole (the string form of "element") of record
+        set pairsEntry to the bim ifcx model member (the string form of "pairs") of record
+        set pairsListed to false
+        if (pairsEntry != (0 as a pointer to a JSON value)) and ((the kind of pairsEntry) = the JSON array kind):
+            set pairsListed to true
+        if (element's valid and pairsListed) = false:
+            return the string form of "malformed settings"
+        set malformed to the string form of "malformed settings"
+        loop cursor from 0 to the length of pairsEntry:
+            set pairEntry to the JSON value at index cursor in pairsEntry
+            if (the kind of pairEntry) != the JSON array kind:
+                return malformed
+            if (the length of pairEntry) != 2:
+                return malformed
+            set code to the bim whole reading of (the text of (the JSON value at index 0 in pairEntry))
+            set value to the bim whole reading of (the text of (the JSON value at index 1 in pairEntry))
+            if (code's valid and value's valid) = false:
+                return malformed
+            if (the bim setting (code's value as an integer) of element's value in (@intrinsic("dereference", modelValue)))'s found = false:
+                restore bim setting (code's value as an integer) of element's value to value's value keeping true in modelValue
+        return the string form of ""
+
+# A property line, `property <element> <type length> <set length> <name length>
+# <type><set><name><value>`, as `the bim pset file text of` writes it: the head
+# gives the lengths of the type, the set and the name, which may hold spaces,
+# and their value is the rest of the line. The refusal is the line's own.
+local function add bim ifcx model property {a string:line} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set malformed to the string form of "malformed property"
+        set marks to a cad topology list of a 64 bit integer
+        loop cursor from 0 to the length of line:
+            if ((the character at cursor in line) = 32) and ((the length of (marks's values)) < 5):
+                append (cursor as a 64 bit integer) to (marks's values)
+        if (the length of (marks's values)) < 5:
+            return malformed
+        set firstMark to (the item at 0 in (marks's values)) as an integer
+        set secondMark to (the item at 1 in (marks's values)) as an integer
+        set thirdMark to (the item at 2 in (marks's values)) as an integer
+        set fourthMark to (the item at 3 in (marks's values)) as an integer
+        set fifthMark to (the item at 4 in (marks's values)) as an integer
+        if (the substring of line from 0 spanning firstMark bytes) != (the string form of "property"):
+            return malformed
+        set element to the bim whole reading of (the substring of line from (firstMark + 1) spanning ((secondMark - firstMark) - 1) bytes)
+        set typeLength to the bim whole reading of (the substring of line from (secondMark + 1) spanning ((thirdMark - secondMark) - 1) bytes)
+        set setLength to the bim whole reading of (the substring of line from (thirdMark + 1) spanning ((fourthMark - thirdMark) - 1) bytes)
+        set nameLength to the bim whole reading of (the substring of line from (fourthMark + 1) spanning ((fifthMark - fourthMark) - 1) bytes)
+        if (((element's valid and typeLength's valid) and setLength's valid) and nameLength's valid) = false:
+            return malformed
+        set packedStart to fifthMark + 1
+        set run to (typeLength's value + setLength's value) + nameLength's value
+        if ((typeLength's value < 0) or (setLength's value < 0)) or ((nameLength's value < 0) or (run > (((the length of line) - packedStart) as a 64 bit integer))):
+            return malformed
+        set setStart to packedStart + (typeLength's value as an integer)
+        set nameStart to setStart + (setLength's value as an integer)
+        set valueStart to nameStart + (nameLength's value as an integer)
+        append (@intrinsic("construct", a bim pset entry record, element's value, (the substring of line from setStart spanning (setLength's value as an integer) bytes), (the substring of line from nameStart spanning (nameLength's value as an integer) bytes), (the substring of line from packedStart spanning (typeLength's value as an integer) bytes), (the substring of line from valueStart spanning ((the length of line) - valueStart) bytes))) to (modelValue's properties's values)
+        return the string form of ""
+
+# The model's properties: every element's, each as its native file line, in one
+# record. The refusal is the line's own.
+local function add bim ifcx model properties {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set malformed to the string form of "malformed property"
+        set linesEntry to the bim ifcx model member (the string form of "lines") of record
+        if (linesEntry = (0 as a pointer to a JSON value)) or ((the kind of linesEntry) != the JSON array kind):
+            return malformed
+        set fault to the string form of ""
+        loop cursor from 0 to the length of linesEntry:
+            if (the length of fault) = 0:
+                set lineEntry to the JSON value at index cursor in linesEntry
+                if (the kind of lineEntry) != the JSON text kind:
+                    set fault to malformed
+                else:
+                    set fault to (add bim ifcx model property (the text of lineEntry) into modelValue)
+        return fault
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -1201,6 +1343,16 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model railing record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::curtain"):
                                 set fault to (add bim ifcx model curtain record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::phase"):
+                                set fault to (add bim ifcx model phase record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::phasing"):
+                                set fault to (add bim ifcx model phasing record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::system"):
+                                set fault to (add bim ifcx model system record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::settings"):
+                                set fault to (add bim ifcx model settings record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::properties"):
+                                set fault to (add bim ifcx model properties record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
