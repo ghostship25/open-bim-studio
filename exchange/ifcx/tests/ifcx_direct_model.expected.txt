@@ -204,7 +204,19 @@ text books: 1
 direct books: 1
 text book 0: 30 Detailbook D- 2 true -1 1 29
 direct book 0: 30 Detailbook D- 2 true -1 1 29
-refused kind: false not built yet: openbim::stair
+text stairs: 1
+direct stairs: 1
+text stair 0: 31 1 0 6 9 1.2 16 concrete
+direct stair 0: 31 1 0 6 9 1.2 16 concrete
+text railings: 1
+direct railings: 1
+text railing 0: 32 1 31 1 2 0.1 9 steel
+direct railing 0: 32 1 31 1 2 0.1 9 steel
+text curtains: 1
+direct curtains: 1
+text curtain 0: 33 1 0 4 3 1 1.5 glass 0.5
+direct curtain 0: 33 1 0 4 3 1 1.5 glass 0.5
+refused kind: false not built yet: openbim::system
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
 crossed plate: a plate outline must not cross itself
@@ -236,3 +248,11 @@ unnumbered book: malformed sheetview
 ordered books: sheetview ids out of order
 fractional page: malformed sheetview page
 bad paper book: a sheetview's paper is A0 to A4
+unfinished stair: malformed stair
+ordered stairs: stair ids out of order
+lost stair level: a stair refers to a missing level
+single point railing: malformed railing
+ordered railings: railing ids out of order
+bad railing point: malformed railing point
+unfinished curtain: malformed curtain
+ordered curtains: curtain ids out of order

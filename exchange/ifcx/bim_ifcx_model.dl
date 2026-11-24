@@ -8,9 +8,10 @@
 # of a planar type), the grid lines, the dimensions, the sketches and the
 # components with their parts, their connectors and their solids; then the
 # instances, the free meshes, the linear types and the linear elements; then the
-# spaces, the tags and the views; and then the drawing types, the sheets and
-# their books. A record kind this module does not build yet is refused by name,
-# so content is never silently dropped.
+# spaces, the tags and the views; then the drawing types, the sheets and their
+# books; and then the stairs, the railings and the curtain walls. A record kind
+# this module does not build yet is refused by name, so content is never
+# silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -1031,6 +1032,88 @@ local function add bim ifcx model sheetview {a pointer to a JSON value:record} i
         append (@intrinsic("construct", a bim sheetview record, id's value, (the bim ifcx model text (the string form of "name") of record), (the bim ifcx model text (the string form of "prefix") of record), paperCode, landscape's value = (1 as a 64 bit integer), contentsId, bookPages)) to (modelValue's sheetviews's values)
         return the string form of ""
 
+# A stair: a straight run climbing to the storey above. The refusals are the
+# text parser's, in its order: the fields, the id, and the storey it climbs.
+local function add bim ifcx model stair {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set risers to the bim ifcx model whole (the string form of "risers") of record
+        set startX to the bim ifcx model number 0 of (the string form of "start") in record
+        set startY to the bim ifcx model number 1 of (the string form of "start") in record
+        set finishX to the bim ifcx model number 0 of (the string form of "finish") in record
+        set finishY to the bim ifcx model number 1 of (the string form of "finish") in record
+        set width to the bim ifcx model real (the string form of "width") of record
+        set materialListed to record has JSON member named (the string form of "material")
+        set endsValid to ((startX's valid and startY's valid) and (finishX's valid and finishY's valid)) and width's valid
+        set fieldsValid to ((id's valid and levelId's valid) and risers's valid) and (endsValid and materialListed)
+        if fieldsValid = false:
+            return the string form of "malformed stair"
+        if (bim ifcx model id id's value follows (modelValue's stairs's values)) = false:
+            return the string form of "stair ids out of order"
+        if (the bim level index of levelId's value in (@intrinsic("dereference", modelValue)))'s valid = false:
+            return the string form of "a stair refers to a missing level"
+        append (@intrinsic("construct", a bim stair record, id's value, levelId's value, (a cad vector2 with x startX's value and y startY's value), (a cad vector2 with x finishX's value and y finishY's value), width's value, risers's value as an integer, (the bim ifcx model text (the string form of "material") of record) with "_" replaced by " ")) to (modelValue's stairs's values)
+        return the string form of ""
+
+# A railing along its plan points, on its stair when hosted. The refusals are
+# the text parser's, in its order: the fields, the id, and each point.
+local function add bim ifcx model railing {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set host to the bim ifcx model whole (the string form of "host") of record
+        set height to the bim ifcx model real (the string form of "height") of record
+        set materialListed to record has JSON member named (the string form of "material")
+        set pointsEntry to the bim ifcx model member (the string form of "points") of record
+        set pointsListed to false
+        set pointCount to 100001
+        if (pointsEntry != (0 as a pointer to a JSON value)) and ((the kind of pointsEntry) = the JSON array kind):
+            set pointsListed to true
+            set pointCount to the length of pointsEntry
+        set fieldsValid to ((id's valid and levelId's valid) and height's valid) and ((pointsListed and materialListed) and ((pointCount >= 2) and (pointCount <= 100000)))
+        if fieldsValid = false:
+            return the string form of "malformed railing"
+        if (bim ifcx model id id's value follows (modelValue's railings's values)) = false:
+            return the string form of "railing ids out of order"
+        set railPoints to a cad topology list of a cad vector2
+        if (add bim ifcx model profile of pointsEntry to (the address of railPoints)) = false:
+            return the string form of "malformed railing point"
+        # A host of `0` is no host, as the text parser reads it.
+        set hostId to the bim refused id
+        if host's valid and (host's value != (0 as a 64 bit integer)):
+            set hostId to host's value
+        append (@intrinsic("construct", a bim railing record, id's value, levelId's value, hostId, railPoints, height's value, (the bim ifcx model text (the string form of "material") of record) with "_" replaced by " ")) to (modelValue's railings's values)
+        return the string form of ""
+
+# A curtain wall of mullions, transoms and glass, curved when it has a bulge.
+# The refusals are the text parser's, in its order: the fields, and the id.
+local function add bim ifcx model curtain {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set startX to the bim ifcx model number 0 of (the string form of "start") in record
+        set startY to the bim ifcx model number 1 of (the string form of "start") in record
+        set finishX to the bim ifcx model number 0 of (the string form of "finish") in record
+        set finishY to the bim ifcx model number 1 of (the string form of "finish") in record
+        set height to the bim ifcx model real (the string form of "height") of record
+        set bay to the bim ifcx model real (the string form of "bay") of record
+        set row to the bim ifcx model real (the string form of "row") of record
+        set materialListed to record has JSON member named (the string form of "material")
+        set endsValid to ((startX's valid and startY's valid) and (finishX's valid and finishY's valid)) and ((height's valid and bay's valid) and row's valid)
+        set fieldsValid to (id's valid and levelId's valid) and (endsValid and materialListed)
+        if fieldsValid = false:
+            return the string form of "malformed curtain"
+        if (bim ifcx model id id's value follows (modelValue's curtains's values)) = false:
+            return the string form of "curtain ids out of order"
+        # A line without a bulge is straight, as the text parser reads it.
+        set bulgeValue to 0.0
+        set bulge to the bim ifcx model real (the string form of "bulge") of record
+        if bulge's valid:
+            set bulgeValue to bulge's value
+        append (@intrinsic("construct", a bim curtain record, id's value, levelId's value, (a cad vector2 with x startX's value and y startY's value), (a cad vector2 with x finishX's value and y finishY's value), height's value, bay's value, row's value, (the bim ifcx model text (the string form of "material") of record) with "_" replaced by " ", bulgeValue)) to (modelValue's curtains's values)
+        return the string form of ""
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -1111,6 +1194,12 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model sheet record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::sheetview"):
                                 set fault to (add bim ifcx model sheetview record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::stair"):
+                                set fault to (add bim ifcx model stair record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::railing"):
+                                set fault to (add bim ifcx model railing record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::curtain"):
+                                set fault to (add bim ifcx model curtain record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)

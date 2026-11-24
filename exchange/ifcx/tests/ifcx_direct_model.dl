@@ -4,7 +4,7 @@
 # offset and a top level, a component with parts, solids and connectors, an
 # instance, a free mesh, two linear types and two linear elements, a space, a
 # tag and two views, a drawing type, a sheet with a view on it and a book of
-# sheets.
+# sheets, a stair, a railing along it and a curtain wall.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -164,6 +164,18 @@ set bookPages to a cad topology list of a 64 bit integer
 append pageId to (bookPages's values)
 set bookId to the bim new id in target
 append (@intrinsic("construct", a bim sheetview record, bookId, (the string form of "Detailbook"), (the string form of "D-"), 2, true, the bim refused id, bookPages)) to (modelValue's sheetviews's values)
+
+# The next group of kinds: a stair, a railing along it and a curved curtain
+# wall.
+set stairId to the bim new id in target
+append (@intrinsic("construct", a bim stair record, stairId, storey, (a cad vector2 with x 0.0 and y 6.0), (a cad vector2 with x 0.0 and y 9.0), 1.2, 16, (the string form of "concrete"))) to (modelValue's stairs's values)
+set railingPoints to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.1 and y 6.0) to (railingPoints's values)
+append (a cad vector2 with x 0.1 and y 9.0) to (railingPoints's values)
+set railingId to the bim new id in target
+append (@intrinsic("construct", a bim railing record, railingId, storey, stairId, railingPoints, 1.0, (the string form of "steel"))) to (modelValue's railings's values)
+set curtainId to the bim new id in target
+append (@intrinsic("construct", a bim curtain record, curtainId, storey, (a cad vector2 with x 0.0 and y 0.0), (a cad vector2 with x 4.0 and y 0.0), 3.0, 1.0, 1.5, (the string form of "glass"), 0.5)) to (modelValue's curtains's values)
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -853,8 +865,95 @@ loop bookCursor from 0 to the length of textBooks:
     print (((the string form of "direct book ") + (the string form of bookCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
 free pieces
 
+# The stairs, the railings and the curtain walls, read from the same texts.
+set pieces to an empty list of a string
+set textStairs to textModel's stairs's values
+set directStairs to directModel's stairs's values
+print ((the string form of "text stairs: ") + (the string form of (the length of textStairs))) as a line
+print ((the string form of "direct stairs: ") + (the string form of (the length of directStairs))) as a line
+loop stairCursor from 0 to the length of textStairs:
+    set textStair to the item at stairCursor in textStairs
+    set directStair to the item at stairCursor in directStairs
+    clear pieces
+    append (the string form of textStair's id) to pieces
+    append (the string form of textStair's levelId) to pieces
+    append (the string form of (textStair's start's x)) to pieces
+    append (the string form of (textStair's start's y)) to pieces
+    append (the string form of (textStair's finish's y)) to pieces
+    append (the string form of textStair's width) to pieces
+    append (the string form of textStair's riserCount) to pieces
+    append textStair's material to pieces
+    print (((the string form of "text stair ") + (the string form of stairCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directStair's id) to pieces
+    append (the string form of directStair's levelId) to pieces
+    append (the string form of (directStair's start's x)) to pieces
+    append (the string form of (directStair's start's y)) to pieces
+    append (the string form of (directStair's finish's y)) to pieces
+    append (the string form of directStair's width) to pieces
+    append (the string form of directStair's riserCount) to pieces
+    append directStair's material to pieces
+    print (((the string form of "direct stair ") + (the string form of stairCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textRailings to textModel's railings's values
+set directRailings to directModel's railings's values
+print ((the string form of "text railings: ") + (the string form of (the length of textRailings))) as a line
+print ((the string form of "direct railings: ") + (the string form of (the length of directRailings))) as a line
+loop railingCursor from 0 to the length of textRailings:
+    set textRailing to the item at railingCursor in textRailings
+    set directRailing to the item at railingCursor in directRailings
+    clear pieces
+    append (the string form of textRailing's id) to pieces
+    append (the string form of textRailing's levelId) to pieces
+    append (the string form of textRailing's hostId) to pieces
+    append (the string form of textRailing's height) to pieces
+    append (the string form of (the length of (textRailing's points's values))) to pieces
+    append (the string form of (the item at 0 in (textRailing's points's values))'s x) to pieces
+    append (the string form of (the item at 1 in (textRailing's points's values))'s y) to pieces
+    append textRailing's material to pieces
+    print (((the string form of "text railing ") + (the string form of railingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directRailing's id) to pieces
+    append (the string form of directRailing's levelId) to pieces
+    append (the string form of directRailing's hostId) to pieces
+    append (the string form of directRailing's height) to pieces
+    append (the string form of (the length of (directRailing's points's values))) to pieces
+    append (the string form of (the item at 0 in (directRailing's points's values))'s x) to pieces
+    append (the string form of (the item at 1 in (directRailing's points's values))'s y) to pieces
+    append directRailing's material to pieces
+    print (((the string form of "direct railing ") + (the string form of railingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textCurtains to textModel's curtains's values
+set directCurtains to directModel's curtains's values
+print ((the string form of "text curtains: ") + (the string form of (the length of textCurtains))) as a line
+print ((the string form of "direct curtains: ") + (the string form of (the length of directCurtains))) as a line
+loop curtainCursor from 0 to the length of textCurtains:
+    set textCurtain to the item at curtainCursor in textCurtains
+    set directCurtain to the item at curtainCursor in directCurtains
+    clear pieces
+    append (the string form of textCurtain's id) to pieces
+    append (the string form of textCurtain's levelId) to pieces
+    append (the string form of (textCurtain's start's x)) to pieces
+    append (the string form of (textCurtain's finish's x)) to pieces
+    append (the string form of textCurtain's height) to pieces
+    append (the string form of textCurtain's bayWidth) to pieces
+    append (the string form of textCurtain's rowHeight) to pieces
+    append textCurtain's material to pieces
+    append (the string form of textCurtain's bulge) to pieces
+    print (((the string form of "text curtain ") + (the string form of curtainCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directCurtain's id) to pieces
+    append (the string form of directCurtain's levelId) to pieces
+    append (the string form of (directCurtain's start's x)) to pieces
+    append (the string form of (directCurtain's finish's x)) to pieces
+    append (the string form of directCurtain's height) to pieces
+    append (the string form of directCurtain's bayWidth) to pieces
+    append (the string form of directCurtain's rowHeight) to pieces
+    append directCurtain's material to pieces
+    append (the string form of directCurtain's bulge) to pieces
+    print (((the string form of "direct curtain ") + (the string form of curtainCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
-set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
 print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
 
@@ -970,3 +1069,32 @@ print ((the string form of "fractional page: ") + fromFractionalPage's message) 
 set badPaperBook to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"prefix\":\"D-\",\"paper\":9,\"landscape\":0,\"pages\":[]}}}]}"
 set fromBadPaperBook to the bim ifcx model of badPaperBook
 print ((the string form of "bad paper book: ") + fromBadPaperBook's message) as a line
+
+# The stairs, the railings and the curtain walls keep the text parser's words
+# too: a stair without its risers, two out of order and one on a missing storey,
+# a railing of one point, two out of order and one with a bad point, a curtain
+# without its material and two out of order.
+set unfinishedStair to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2}}}]}"
+set fromUnfinishedStair to the bim ifcx model of unfinishedStair
+print ((the string form of "unfinished stair: ") + fromUnfinishedStair's message) as a line
+set orderedStairs to the string form of "{\"data\":[{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground\",\"elevation\":0,\"height\":3}}},{\"attributes\":{\"openbim::stair\":{\"id\":2,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}},{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}}]}"
+set fromOrderedStairs to the bim ifcx model of orderedStairs
+print ((the string form of "ordered stairs: ") + fromOrderedStairs's message) as a line
+set lostStairLevel to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":9,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}}]}"
+set fromLostStairLevel to the bim ifcx model of lostStairLevel
+print ((the string form of "lost stair level: ") + fromLostStairLevel's message) as a line
+set singlePointRailing to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0]],\"material\":\"steel\"}}}]}"
+set fromSinglePointRailing to the bim ifcx model of singlePointRailing
+print ((the string form of "single point railing: ") + fromSinglePointRailing's message) as a line
+set orderedRailings to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":2,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}},{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}}]}"
+set fromOrderedRailings to the bim ifcx model of orderedRailings
+print ((the string form of "ordered railings: ") + fromOrderedRailings's message) as a line
+set badRailingPoint to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[1,\"x\"]],\"material\":\"steel\"}}}]}"
+set fromBadRailingPoint to the bim ifcx model of badRailingPoint
+print ((the string form of "bad railing point: ") + fromBadRailingPoint's message) as a line
+set unfinishedCurtain to the string form of "{\"data\":[{\"attributes\":{\"openbim::curtain\":{\"id\":1,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5}}}]}"
+set fromUnfinishedCurtain to the bim ifcx model of unfinishedCurtain
+print ((the string form of "unfinished curtain: ") + fromUnfinishedCurtain's message) as a line
+set orderedCurtains to the string form of "{\"data\":[{\"attributes\":{\"openbim::curtain\":{\"id\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}},{\"attributes\":{\"openbim::curtain\":{\"id\":1,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}}]}"
+set fromOrderedCurtains to the bim ifcx model of orderedCurtains
+print ((the string form of "ordered curtains: ") + fromOrderedCurtains's message) as a line
