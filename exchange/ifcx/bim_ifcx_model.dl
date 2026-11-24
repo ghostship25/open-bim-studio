@@ -7,9 +7,9 @@
 # level; then the opening types and their openings, the slabs (and the plates
 # of a planar type), the grid lines, the dimensions, the sketches and the
 # components with their parts, their connectors and their solids; then the
-# instances, the free meshes, the linear types and the linear elements. A record
-# kind this module does not build yet is refused by name, so content is never
-# silently dropped.
+# instances, the free meshes, the linear types and the linear elements; and then
+# the spaces, the tags and the views. A record kind this module does not build
+# yet is refused by name, so content is never silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -794,6 +794,127 @@ local function add bim ifcx model linear {a pointer to a JSON value:record} into
         append (@intrinsic("construct", a bim linear record, id's value, typeId's value, levelId's value, start's point, finish's point, angle's value, twistValue, taperValue)) to (modelValue's linears's values)
         return the string form of ""
 
+# A space: its storey, height, outline and name, and then its number, which
+# the text parser reads from a `spacenumber` line of its own. The refusals are
+# the text parser's, in its order: the fields, the corners it is drawn with, the
+# id, the height, the outline and the name.
+local function add bim ifcx model space object {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set height to the bim ifcx model real (the string form of "height") of record
+        if ((id's valid and levelId's valid) and height's valid) = false:
+            return the string form of "malformed space"
+        set outlineEntry to the bim ifcx model member (the string form of "outline") of record
+        set cornersListed to false
+        if outlineEntry != (0 as a pointer to a JSON value):
+            set cornersListed to (the kind of outlineEntry) = the JSON array kind
+        if cornersListed = false:
+            return the string form of "malformed space"
+        if (the length of outlineEntry) < 3:
+            return the string form of "a space needs at least 3 corners"
+        if (bim ifcx model id id's value follows (modelValue's spaceObjects's values)) = false:
+            return the string form of "space ids out of order"
+        if height's value <= 0.0:
+            return the string form of "a space needs a positive height"
+        set outline to a cad topology list of a cad vector2
+        set outlineFault to the bim ifcx model outline of record named (the string form of "space") into (the address of outline)
+        if (the length of outlineFault) > 0:
+            return outlineFault
+        set name to the bim ifcx model text (the string form of "name") of record
+        if (the length of name) = 0:
+            return the string form of "a space needs a name"
+        append (@intrinsic("construct", a bim space object record, id's value, levelId's value, name, (the bim ifcx model text (the string form of "number") of record), outline, height's value)) to (modelValue's spaceObjects's values)
+        return the string form of ""
+
+# A tag: an annotation of an element, centred at its place. The refusals are
+# the text parser's: the fields, the id, and the element it names.
+local function add bim ifcx model tag {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set elementId to the bim ifcx model whole (the string form of "element") of record
+        set across to the bim ifcx model number 0 of (the string form of "place") in record
+        set upward to the bim ifcx model number 1 of (the string form of "place") in record
+        if (((id's valid and elementId's valid) and across's valid) and upward's valid) = false:
+            return the string form of "malformed tag"
+        if (bim ifcx model id id's value follows (modelValue's tags's values)) = false:
+            return the string form of "tag ids out of order"
+        if (bim element elementId's value can be tagged in (@intrinsic("dereference", modelValue))) = false:
+            return the string form of "a tag refers to a missing element"
+        append (@intrinsic("construct", a bim tag record, id's value, elementId's value, (a cad vector2 with x across's value and y upward's value))) to (modelValue's tags's values)
+        return the string form of ""
+
+# A view: documentation kept with the model. A view line carries its kind, its
+# storey, cut, scale and crop and the categories it shows; its drawing type,
+# display mode and depth follow on lines of their own. The record carries all
+# of them, so the text parser's refusals are kept, in its order: the fields,
+# the id and the kind.
+local function add bim ifcx model view {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set kind to the bim ifcx model whole (the string form of "kind") of record
+        set levelId to the bim ifcx model whole (the string form of "level") of record
+        set detail to the bim ifcx model whole (the string form of "detail") of record
+        set cut to the bim ifcx model real (the string form of "cut") of record
+        set scale to the bim ifcx model whole (the string form of "scale") of record
+        set cropped to bim ifcx model flag (the string form of "cropped") of record
+        set lowX to the bim ifcx model number 0 of (the string form of "low") in record
+        set lowY to the bim ifcx model number 1 of (the string form of "low") in record
+        set highX to the bim ifcx model number 0 of (the string form of "high") in record
+        set highY to the bim ifcx model number 1 of (the string form of "high") in record
+        set fromX to the bim ifcx model number 0 of (the string form of "from") in record
+        set fromY to the bim ifcx model number 1 of (the string form of "from") in record
+        set toX to the bim ifcx model number 0 of (the string form of "to") in record
+        set toY to the bim ifcx model number 1 of (the string form of "to") in record
+        set shownListed to record has JSON member named (the string form of "shown")
+        set faintListed to record has JSON member named (the string form of "halftone")
+        set nameListed to record has JSON member named (the string form of "name")
+        set cornersValid to ((lowX's valid and lowY's valid) and (highX's valid and highY's valid)) and ((fromX's valid and fromY's valid) and (toX's valid and toY's valid))
+        set fieldsValid to (((((id's valid and kind's valid) and levelId's valid) and detail's valid) and cut's valid) and scale's valid) and (cropped's valid and cornersValid)
+        if ((fieldsValid and shownListed) and faintListed) and nameListed = false:
+            return the string form of "malformed view"
+        if (bim ifcx model id id's value follows (modelValue's views's values)) = false:
+            return the string form of "view ids out of order"
+        set kindCode to kind's value as an integer
+        if (kindCode < 0) or (kindCode > 4):
+            return the string form of "unknown view kind"
+        set shownText to the bim ifcx model text (the string form of "shown") of record
+        set faintText to the bim ifcx model text (the string form of "halftone") of record
+        set shownFlags to a cad topology list of a boolean
+        set faintFlags to a cad topology list of a boolean
+        loop flagCursor from 0 to the length of shownText:
+            append ((the character at flagCursor in shownText) = 49) to (shownFlags's values)
+        loop flagCursor from 0 to the length of faintText:
+            append ((the character at flagCursor in faintText) = 49) to (faintFlags's values)
+        # The drawing type and phase a view follows, and how it is drawn. A
+        # view line writes none of them; the record holds whatever it carries.
+        set drawingTypeId to the bim refused id
+        set automatic to false
+        set phaseId to the bim refused id
+        set drawingType to the bim ifcx model whole (the string form of "drawingType") of record
+        if drawingType's valid:
+            set drawingTypeId to drawingType's value
+            set automaticReading to bim ifcx model flag (the string form of "automatic") of record
+            if automaticReading's valid:
+                set automatic to automaticReading's value = (1 as a 64 bit integer)
+            set phase to the bim ifcx model whole (the string form of "phase") of record
+            if phase's valid:
+                set phaseId to phase's value
+        set displayMode to 0
+        set display to the bim ifcx model whole (the string form of "display") of record
+        if display's valid:
+            set displayMode to display's value as an integer
+        set depth to 0.0
+        set depthReading to the bim ifcx model real (the string form of "depth") of record
+        if depthReading's valid:
+            set depth to depthReading's value
+        set lowCorner to a cad vector2 with x lowX's value and y lowY's value
+        set highCorner to a cad vector2 with x highX's value and y highY's value
+        set lineFrom to a cad vector2 with x fromX's value and y fromY's value
+        set lineTo to a cad vector2 with x toX's value and y toY's value
+        append (@intrinsic("construct", a bim view definition record, id's value, kindCode, (the bim ifcx model text (the string form of "name") of record), levelId's value, detail's value, cut's value, scale's value as an integer, cropped's value = (1 as a 64 bit integer), lowCorner, highCorner, shownFlags, faintFlags, lineFrom, lineTo, drawingTypeId, automatic, phaseId, displayMode, depth)) to (modelValue's views's values)
+        return the string form of ""
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -814,6 +935,10 @@ function the bim ifcx model of {a string:content}:
         set modelValue to an empty bim model
         set openbimPrefix to the string form of "openbim::"
         set fault to the string form of ""
+        # Tags name the elements they annotate, and the writer puts them before
+        # the wall types; they are built once every other record is in, as the
+        # text parser reads them last.
+        set pendingTags to an empty list of a pointer to a JSON value
         loop cursor from 0 to the length of data:
             set node to the JSON value at index cursor in data
             set attributesFound to false
@@ -858,9 +983,19 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model linear type record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::linear"):
                                 set fault to (add bim ifcx model linear record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::spaceObject"):
+                                set fault to (add bim ifcx model space object record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::tag"):
+                                append record to pendingTags
+                            else if entry's name = (the string form of "openbim::view"):
+                                set fault to (add bim ifcx model view record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
+        loop cursor from 0 to the length of pendingTags:
+            if (the length of fault) = 0:
+                set fault to (add bim ifcx model tag (the item at cursor in pendingTags) into (the address of modelValue))
+        free pendingTags
         free parsed
         if (the length of fault) > 0:
             return a bim ifcx model refusal saying fault

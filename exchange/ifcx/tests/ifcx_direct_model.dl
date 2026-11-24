@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # The direct IfcX construction (#161, step 3) builds the same model as the
 # text route: one level, a wall type with two layers, a wall carrying a base
-# offset and a top level, a component with parts, solids and connectors, and
-# an instance, a free mesh, two linear types and two linear elements.
+# offset and a top level, a component with parts, solids and connectors, an
+# instance, a free mesh, two linear types and two linear elements, and a space,
+# a tag and two views.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -122,6 +123,32 @@ set pipeType to add bim linear type named (the string form of "Leiding 100") as 
 ignore add bim linear typed columnType on storey from (a cad vector3 with x 2.0, y 2.0 and z 0.0) to (a cad vector3 with x 2.0, y 2.0 and z 3.0) turned 0.3 to target
 set pipe to add bim linear typed pipeType on storey from (a cad vector3 with x 0.0, y 5.0 and z 0.5) to (a cad vector3 with x 4.0, y 8.0 and z 0.8) turned 0.0 to target
 ignore shape bim linear pipe twisting 0.1 tapering (a cad vector2 with x 1.2 and y 0.8) in target
+
+# The next group of kinds: a space with its number, a tag on the wall, a plan
+# view with a display mode and a depth, and a section view on its cut line.
+set spaceOutline to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to spaceOutline
+append (a cad vector2 with x 4.0 and y 0.0) to spaceOutline
+append (a cad vector2 with x 4.0 and y 3.0) to spaceOutline
+append (a cad vector2 with x 0.0 and y 3.0) to spaceOutline
+ignore add bim space object named (the string form of "Kantoor") numbered (the string form of "0.01") on storey around spaceOutline high 2.7 to target
+free spaceOutline
+ignore add bim tag of wallRecord's id at (a cad vector2 with x 2.0 and y 0.5) to target
+set shownFlags to a cad topology list of a boolean
+set faintFlags to a cad topology list of a boolean
+loop category from 0 to 19:
+    append (category > 2) to (shownFlags's values)
+    append (category < 3) to (faintFlags's values)
+set planOrigin to a cad vector2 with x 0.0 and y 0.0
+set planId to the bim new id in target
+append (@intrinsic("construct", a bim view definition record, planId, bim plan view, (the string form of "Ground floor plan"), storey, 0 as a 64 bit integer, 1.2, 100, true, (a cad vector2 with x -1.0 and y -1.0), (a cad vector2 with x 5.0 and y 4.0), shownFlags, faintFlags, planOrigin, planOrigin, the bim refused id, false, the bim refused id, 3, 5.0)) to (modelValue's views's values)
+set sectionShown to a cad topology list of a boolean
+set sectionFaint to a cad topology list of a boolean
+loop category from 0 to 19:
+    append (category < 9) to (sectionShown's values)
+    append false to (sectionFaint's values)
+set sectionId to the bim new id in target
+append (@intrinsic("construct", a bim view definition record, sectionId, bim section view, (the string form of "Section 1"), storey, 1 as a 64 bit integer, 1.0, 50, false, (a cad vector2 with x 0.0 and y -1.0), (a cad vector2 with x 0.0 and y 4.0), sectionShown, sectionFaint, (a cad vector2 with x 1.0 and y 0.0), (a cad vector2 with x 1.0 and y 5.0), the bim refused id, false, the bim refused id, 0, 0.0)) to (modelValue's views's values)
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -608,6 +635,113 @@ loop linearCursor from 0 to the length of textLinears:
     print (((the string form of "direct linear ") + (the string form of linearCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
 free pieces
 
+# The spaces, the tags and the views, read from the same texts.
+set pieces to an empty list of a string
+set textSpaces to textModel's spaceObjects's values
+set directSpaces to directModel's spaceObjects's values
+print ((the string form of "text spaces: ") + (the string form of (the length of textSpaces))) as a line
+print ((the string form of "direct spaces: ") + (the string form of (the length of directSpaces))) as a line
+loop spaceCursor from 0 to the length of textSpaces:
+    set textSpace to the item at spaceCursor in textSpaces
+    set directSpace to the item at spaceCursor in directSpaces
+    clear pieces
+    append (the string form of textSpace's id) to pieces
+    append (the string form of textSpace's levelId) to pieces
+    append textSpace's name to pieces
+    append textSpace's number to pieces
+    append (the string form of textSpace's height) to pieces
+    append (the string form of (the length of (textSpace's outline's values))) to pieces
+    append (the string form of (the item at 2 in (textSpace's outline's values))'s x) to pieces
+    append (the string form of (the item at 2 in (textSpace's outline's values))'s y) to pieces
+    print (((the string form of "text space ") + (the string form of spaceCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSpace's id) to pieces
+    append (the string form of directSpace's levelId) to pieces
+    append directSpace's name to pieces
+    append directSpace's number to pieces
+    append (the string form of directSpace's height) to pieces
+    append (the string form of (the length of (directSpace's outline's values))) to pieces
+    append (the string form of (the item at 2 in (directSpace's outline's values))'s x) to pieces
+    append (the string form of (the item at 2 in (directSpace's outline's values))'s y) to pieces
+    print (((the string form of "direct space ") + (the string form of spaceCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textTags to textModel's tags's values
+set directTags to directModel's tags's values
+print ((the string form of "text tags: ") + (the string form of (the length of textTags))) as a line
+print ((the string form of "direct tags: ") + (the string form of (the length of directTags))) as a line
+loop tagCursor from 0 to the length of textTags:
+    set textTag to the item at tagCursor in textTags
+    set directTag to the item at tagCursor in directTags
+    clear pieces
+    append (the string form of textTag's id) to pieces
+    append (the string form of textTag's elementId) to pieces
+    append (the string form of (textTag's place's x)) to pieces
+    append (the string form of (textTag's place's y)) to pieces
+    print (((the string form of "text tag ") + (the string form of tagCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directTag's id) to pieces
+    append (the string form of directTag's elementId) to pieces
+    append (the string form of (directTag's place's x)) to pieces
+    append (the string form of (directTag's place's y)) to pieces
+    print (((the string form of "direct tag ") + (the string form of tagCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textViews to textModel's views's values
+set directViews to directModel's views's values
+print ((the string form of "text views: ") + (the string form of (the length of textViews))) as a line
+print ((the string form of "direct views: ") + (the string form of (the length of directViews))) as a line
+loop viewCursor from 0 to the length of textViews:
+    set textView to the item at viewCursor in textViews
+    set directView to the item at viewCursor in directViews
+    clear pieces
+    append (the string form of textView's id) to pieces
+    append textView's name to pieces
+    append (the string form of textView's kind) to pieces
+    append (the string form of textView's levelId) to pieces
+    append (the string form of textView's detail) to pieces
+    append (the string form of textView's cutHeight) to pieces
+    append (the string form of textView's scale) to pieces
+    append (the string form of textView's cropped) to pieces
+    append (the string form of (textView's cropLow's x)) to pieces
+    append (the string form of (textView's cropHigh's y)) to pieces
+    append (the string form of (textView's lineStart's x)) to pieces
+    append (the string form of (textView's lineFinish's y)) to pieces
+    append (the string form of (the length of (textView's shown's values))) to pieces
+    append (the string form of (the item at 0 in (textView's shown's values))) to pieces
+    append (the string form of (the item at 18 in (textView's shown's values))) to pieces
+    append (the string form of (the length of (textView's faint's values))) to pieces
+    append (the string form of (the item at 0 in (textView's faint's values))) to pieces
+    append (the string form of (the item at 18 in (textView's faint's values))) to pieces
+    append (the string form of textView's drawingTypeId) to pieces
+    append (the string form of textView's automatic) to pieces
+    append (the string form of textView's phaseId) to pieces
+    append (the string form of textView's displayMode) to pieces
+    append (the string form of textView's depth) to pieces
+    print (((the string form of "text view ") + (the string form of viewCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directView's id) to pieces
+    append directView's name to pieces
+    append (the string form of directView's kind) to pieces
+    append (the string form of directView's levelId) to pieces
+    append (the string form of directView's detail) to pieces
+    append (the string form of directView's cutHeight) to pieces
+    append (the string form of directView's scale) to pieces
+    append (the string form of directView's cropped) to pieces
+    append (the string form of (directView's cropLow's x)) to pieces
+    append (the string form of (directView's cropHigh's y)) to pieces
+    append (the string form of (directView's lineStart's x)) to pieces
+    append (the string form of (directView's lineFinish's y)) to pieces
+    append (the string form of (the length of (directView's shown's values))) to pieces
+    append (the string form of (the item at 0 in (directView's shown's values))) to pieces
+    append (the string form of (the item at 18 in (directView's shown's values))) to pieces
+    append (the string form of (the length of (directView's faint's values))) to pieces
+    append (the string form of (the item at 0 in (directView's faint's values))) to pieces
+    append (the string form of (the item at 18 in (directView's faint's values))) to pieces
+    append (the string form of directView's drawingTypeId) to pieces
+    append (the string form of directView's automatic) to pieces
+    append (the string form of directView's phaseId) to pieces
+    append (the string form of directView's displayMode) to pieces
+    append (the string form of directView's depth) to pieces
+    print (((the string form of "direct view ") + (the string form of viewCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
 set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
@@ -667,3 +801,25 @@ print ((the string form of "bad linear type: ") + fromBadLinearType's message) a
 set lostInstance to the string form of "{\"data\":[{\"attributes\":{\"openbim::instance\":{\"id\":1,\"component\":2,\"level\":1,\"origin\":[1,2]}}}]}"
 set fromLostInstance to the bim ifcx model of lostInstance
 print ((the string form of "lost instance: ") + fromLostInstance's message) as a line
+
+# The spaces, the tags and the views keep the text parser's words too: a space
+# that crosses itself, one without a name and one without height, a tag on a
+# missing element, a view of an unknown kind and views out of order.
+set crossedSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":2.5,\"outline\":[[0,0],[1,1],[1,0],[0,1]],\"name\":\"Kantoor\"}}}]}"
+set fromCrossedSpace to the bim ifcx model of crossedSpace
+print ((the string form of "crossed space: ") + fromCrossedSpace's message) as a line
+set namelessSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":2.5,\"outline\":[[0,0],[1,0],[1,1]],\"name\":\"\"}}}]}"
+set fromNamelessSpace to the bim ifcx model of namelessSpace
+print ((the string form of "nameless space: ") + fromNamelessSpace's message) as a line
+set flatSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":0,\"outline\":[[0,0],[1,0],[1,1]],\"name\":\"Kantoor\"}}}]}"
+set fromFlatSpace to the bim ifcx model of flatSpace
+print ((the string form of "flat space: ") + fromFlatSpace's message) as a line
+set lostTag to the string form of "{\"data\":[{\"attributes\":{\"openbim::tag\":{\"id\":1,\"element\":9,\"place\":[1,2]}}}]}"
+set fromLostTag to the bim ifcx model of lostTag
+print ((the string form of "lost tag: ") + fromLostTag's message) as a line
+set unknownView to the string form of "{\"data\":[{\"attributes\":{\"openbim::view\":{\"id\":1,\"kind\":9,\"name\":\"Odd\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}}]}"
+set fromUnknownView to the bim ifcx model of unknownView
+print ((the string form of "unknown view: ") + fromUnknownView's message) as a line
+set orderedViews to the string form of "{\"data\":[{\"attributes\":{\"openbim::view\":{\"id\":2,\"kind\":0,\"name\":\"Later\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}},{\"attributes\":{\"openbim::view\":{\"id\":1,\"kind\":0,\"name\":\"Earlier\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}}]}"
+set fromOrderedViews to the bim ifcx model of orderedViews
+print ((the string form of "ordered views: ") + fromOrderedViews's message) as a line
