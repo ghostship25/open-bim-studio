@@ -1044,9 +1044,10 @@ local function add bim ifcx model stair {a pointer to a JSON value:record} into 
         set finishX to the bim ifcx model number 0 of (the string form of "finish") in record
         set finishY to the bim ifcx model number 1 of (the string form of "finish") in record
         set width to the bim ifcx model real (the string form of "width") of record
+        set endsValid to (startX's valid and startY's valid) and (finishX's valid and finishY's valid)
+        set fieldsValid to ((id's valid and levelId's valid) and (risers's valid and width's valid)) and endsValid
         set materialListed to record has JSON member named (the string form of "material")
-        set fieldsValid to (((id's valid and levelId's valid) and risers's valid) and (((startX's valid and startY's valid) and (finishX's valid and finishY's valid)) and width's valid)) and materialListed
-        if fieldsValid = false:
+        if (fieldsValid and materialListed) = false:
             return the string form of "malformed stair"
         if (bim ifcx model id id's value follows (modelValue's stairs's values)) = false:
             return the string form of "stair ids out of order"
@@ -1064,14 +1065,14 @@ local function add bim ifcx model railing {a pointer to a JSON value:record} int
         set host to the bim ifcx model whole (the string form of "host") of record
         set height to the bim ifcx model real (the string form of "height") of record
         set materialListed to record has JSON member named (the string form of "material")
-        # A railing needs at least two points, so a count out of range stands
-        # for a missing list as well.
+        # A railing needs at least two points, so a count of 0 stands for a
+        # missing list as well as an empty one.
         set pointsEntry to the bim ifcx model member (the string form of "points") of record
-        set pointCount to 100001
+        set pointCount to 0
         if (pointsEntry != (0 as a pointer to a JSON value)) and ((the kind of pointsEntry) = the JSON array kind):
             set pointCount to the length of pointsEntry
-        set fieldsValid to (((id's valid and levelId's valid) and host's valid) and height's valid) and ((materialListed and (pointCount >= 2)) and (pointCount <= 100000))
-        if fieldsValid = false:
+        set fieldsValid to ((id's valid and levelId's valid) and (host's valid and height's valid)) and materialListed
+        if (fieldsValid and ((pointCount >= 2) and (pointCount <= 100000))) = false:
             return the string form of "malformed railing"
         if (bim ifcx model id id's value follows (modelValue's railings's values)) = false:
             return the string form of "railing ids out of order"
@@ -1098,9 +1099,11 @@ local function add bim ifcx model curtain {a pointer to a JSON value:record} int
         set height to the bim ifcx model real (the string form of "height") of record
         set bay to the bim ifcx model real (the string form of "bay") of record
         set row to the bim ifcx model real (the string form of "row") of record
+        set endsValid to (startX's valid and startY's valid) and (finishX's valid and finishY's valid)
+        set measuresValid to (height's valid and bay's valid) and row's valid
+        set fieldsValid to (id's valid and levelId's valid) and (endsValid and measuresValid)
         set materialListed to record has JSON member named (the string form of "material")
-        set fieldsValid to ((id's valid and levelId's valid) and (((startX's valid and startY's valid) and (finishX's valid and finishY's valid)) and ((height's valid and bay's valid) and row's valid))) and materialListed
-        if fieldsValid = false:
+        if (fieldsValid and materialListed) = false:
             return the string form of "malformed curtain"
         if (bim ifcx model id id's value follows (modelValue's curtains's values)) = false:
             return the string form of "curtain ids out of order"
