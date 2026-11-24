@@ -7,9 +7,10 @@
 # level; then the opening types and their openings, the slabs (and the plates
 # of a planar type), the grid lines, the dimensions, the sketches and the
 # components with their parts, their connectors and their solids; then the
-# instances, the free meshes, the linear types and the linear elements; and then
-# the spaces, the tags and the views. A record kind this module does not build
-# yet is refused by name, so content is never silently dropped.
+# instances, the free meshes, the linear types and the linear elements; then the
+# spaces, the tags and the views; and then the drawing types, the sheets and
+# their books. A record kind this module does not build yet is refused by name,
+# so content is never silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -915,6 +916,121 @@ local function add bim ifcx model view {a pointer to a JSON value:record} into {
         append (@intrinsic("construct", a bim view definition record, id's value, kindCode, (the bim ifcx model text (the string form of "name") of record), levelId's value, detail's value, cut's value, scale's value as an integer, cropped's value = (1 as a 64 bit integer), lowCorner, highCorner, shownFlags, faintFlags, lineFrom, lineTo, drawingTypeId, automatic, phaseId, displayMode, depth)) to (modelValue's views's values)
         return the string form of ""
 
+# A drawing type's settings as one field: `-` inherited, a digit that
+# category's code, as the text parser reads the `drawingtype` line's field.
+local function the bim ifcx model settings of {a string:field}:
+    execute:
+        set settingList to a cad topology list of an integer
+        loop cursor from 0 to the length of field:
+            set code to the character at cursor in field
+            if (code >= 48) and (code <= 57):
+                append (code - 48) to (settingList's values)
+            else:
+                append -1 to (settingList's values)
+        return settingList
+
+# A drawing type: the settings it draws the categories with. The refusals are
+# the text parser's, in its order: the fields, and the id.
+local function add bim ifcx model drawing type {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set parentId to the bim ifcx model whole (the string form of "parent") of record
+        set phaseFilter to the bim ifcx model whole (the string form of "phaseFilter") of record
+        set nameListed to record has JSON member named (the string form of "name")
+        if ((id's valid and parentId's valid) and phaseFilter's valid) and nameListed = false:
+            return the string form of "malformed drawing type"
+        if (bim ifcx model id id's value follows (modelValue's drawingTypes's values)) = false:
+            return the string form of "drawing type ids out of order"
+        set shown to the bim ifcx model settings of (the bim ifcx model text (the string form of "shown") of record)
+        set faint to the bim ifcx model settings of (the bim ifcx model text (the string form of "halftone") of record)
+        set annotations to the bim ifcx model settings of (the bim ifcx model text (the string form of "annotations") of record)
+        append (@intrinsic("construct", a bim drawing type record, id's value, (the bim ifcx model text (the string form of "name") of record), parentId's value, shown, faint, annotations, phaseFilter's value as an integer)) to (modelValue's drawingTypes's values)
+        return the string form of ""
+
+# A sheet: its paper, number and name, and the views placed on it with the
+# model points they look at. The refusals are the text parser's, in its order:
+# the fields, the id, each viewport, and the paper.
+local function add bim ifcx model sheet {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set paper to the bim ifcx model whole (the string form of "paper") of record
+        set landscape to bim ifcx model flag (the string form of "landscape") of record
+        set numberListed to record has JSON member named (the string form of "number")
+        set nameListed to record has JSON member named (the string form of "name")
+        set viewportsEntry to the bim ifcx model member (the string form of "viewports") of record
+        set viewportsListed to false
+        if (viewportsEntry != (0 as a pointer to a JSON value)) and ((the kind of viewportsEntry) = the JSON array kind):
+            set viewportsListed to true
+        set placedCount to 1001
+        if viewportsListed:
+            set placedCount to the length of viewportsEntry
+        set fieldsValid to ((id's valid and paper's valid) and landscape's valid) and (viewportsListed and ((numberListed and nameListed) and (placedCount <= 1000)))
+        if fieldsValid = false:
+            return the string form of "malformed sheet"
+        if (bim ifcx model id id's value follows (modelValue's sheets's values)) = false:
+            return the string form of "sheet ids out of order"
+        set placed to a cad topology list of a bim viewport record
+        loop cursor from 0 to placedCount:
+            set placedEntry to the JSON value at index cursor in viewportsEntry
+            if (the kind of placedEntry) != the JSON array kind:
+                return the string form of "malformed viewport"
+            if (the length of placedEntry) != 5:
+                return the string form of "malformed viewport"
+            set viewId to the bim whole reading of (the text of (the JSON value at index 0 in placedEntry))
+            set centreX to the bim real reading of (the text of (the JSON value at index 1 in placedEntry))
+            set centreY to the bim real reading of (the text of (the JSON value at index 2 in placedEntry))
+            set modelX to the bim real reading of (the text of (the JSON value at index 3 in placedEntry))
+            set modelY to the bim real reading of (the text of (the JSON value at index 4 in placedEntry))
+            if (((viewId's valid and centreX's valid) and centreY's valid) and (modelX's valid and modelY's valid)) = false:
+                return the string form of "malformed viewport"
+            append (@intrinsic("construct", a bim viewport record, viewId's value, (a cad vector2 with x centreX's value and y centreY's value), (a cad vector2 with x modelX's value and y modelY's value))) to (placed's values)
+        set paperCode to paper's value as an integer
+        if (paperCode < bim a0 paper) or (paperCode > bim a4 paper):
+            return the string form of "a sheet's paper is A0 to A4"
+        append (@intrinsic("construct", a bim sheet record, id's value, (the bim ifcx model text (the string form of "number") of record), (the bim ifcx model text (the string form of "name") of record), paperCode, landscape's value = (1 as a 64 bit integer), placed)) to (modelValue's sheets's values)
+        return the string form of ""
+
+# A book of sheets: its prefix and its pages, which are sheets, in order. The
+# refusals are the text parser's, in its order: the fields, the id, each page,
+# and the paper.
+local function add bim ifcx model sheetview {a pointer to a JSON value:record} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set id to the bim ifcx model whole (the string form of "id") of record
+        set paper to the bim ifcx model whole (the string form of "paper") of record
+        set landscape to bim ifcx model flag (the string form of "landscape") of record
+        set prefixListed to record has JSON member named (the string form of "prefix")
+        set nameListed to record has JSON member named (the string form of "name")
+        set pagesEntry to the bim ifcx model member (the string form of "pages") of record
+        set pagesListed to false
+        if (pagesEntry != (0 as a pointer to a JSON value)) and ((the kind of pagesEntry) = the JSON array kind):
+            set pagesListed to true
+        set pageCount to 100001
+        if pagesListed:
+            set pageCount to the length of pagesEntry
+        set fieldsValid to ((id's valid and paper's valid) and landscape's valid) and (pagesListed and ((prefixListed and nameListed) and (pageCount <= 100000)))
+        if fieldsValid = false:
+            return the string form of "malformed sheetview"
+        if (bim ifcx model id id's value follows (modelValue's sheetviews's values)) = false:
+            return the string form of "sheetview ids out of order"
+        set bookPages to a cad topology list of a 64 bit integer
+        loop cursor from 0 to pageCount:
+            set pageReading to the bim whole reading of (the text of (the JSON value at index cursor in pagesEntry))
+            if pageReading's valid = false:
+                return the string form of "malformed sheetview page"
+            append pageReading's value to (bookPages's values)
+        # A contents page of nothing is no contents page, as the text parser
+        # reads a `0`.
+        set contentsId to the bim refused id
+        set contents to the bim ifcx model whole (the string form of "contents") of record
+        if contents's valid:
+            if contents's value > (0 as a 64 bit integer):
+                set contentsId to contents's value
+        set paperCode to paper's value as an integer
+        if (paperCode < bim a0 paper) or (paperCode > bim a4 paper):
+            return the string form of "a sheetview's paper is A0 to A4"
+        append (@intrinsic("construct", a bim sheetview record, id's value, (the bim ifcx model text (the string form of "name") of record), (the bim ifcx model text (the string form of "prefix") of record), paperCode, landscape's value = (1 as a 64 bit integer), contentsId, bookPages)) to (modelValue's sheetviews's values)
+        return the string form of ""
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -989,6 +1105,12 @@ function the bim ifcx model of {a string:content}:
                                 append record to pendingTags
                             else if entry's name = (the string form of "openbim::view"):
                                 set fault to (add bim ifcx model view record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::drawingType"):
+                                set fault to (add bim ifcx model drawing type record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::sheet"):
+                                set fault to (add bim ifcx model sheet record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::sheetview"):
+                                set fault to (add bim ifcx model sheetview record into (the address of modelValue))
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)

@@ -2,8 +2,9 @@
 # The direct IfcX construction (#161, step 3) builds the same model as the
 # text route: one level, a wall type with two layers, a wall carrying a base
 # offset and a top level, a component with parts, solids and connectors, an
-# instance, a free mesh, two linear types and two linear elements, and a space,
-# a tag and two views.
+# instance, a free mesh, two linear types and two linear elements, a space, a
+# tag and two views, a drawing type, a sheet with a view on it and a book of
+# sheets.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -149,6 +150,20 @@ loop category from 0 to 19:
     append false to (sectionFaint's values)
 set sectionId to the bim new id in target
 append (@intrinsic("construct", a bim view definition record, sectionId, bim section view, (the string form of "Section 1"), storey, 1 as a 64 bit integer, 1.0, 50, false, (a cad vector2 with x 0.0 and y -1.0), (a cad vector2 with x 0.0 and y 4.0), sectionShown, sectionFaint, (a cad vector2 with x 1.0 and y 0.0), (a cad vector2 with x 1.0 and y 5.0), the bim refused id, false, the bim refused id, 0, 0.0)) to (modelValue's views's values)
+
+# The next group of kinds: a drawing type, a sheet with a view on it and a book
+# of sheets.
+set rulesId to add bim drawing type named (the string form of "Rules") under (the bim refused id) to target
+ignore set bim drawing type rulesId setting 0 at 0 to 1 in target
+ignore set bim drawing type rulesId setting 1 at 3 to 0 in target
+ignore set bim drawing type rulesId setting 2 at 5 to 2 in target
+set sheetId to add bim sheet numbered (the string form of "A-101") named (the string form of "Plan") on paper 2 landscape true to target
+ignore place bim view planId on sheet sheetId at (a cad vector2 with x 10.0 and y 20.0) looking at (a cad vector2 with x 1.0 and y 2.0) in target
+set pageId to add bim sheet numbered (the string form of "D-01") named (the string form of "Detail") on paper 2 landscape true to target
+set bookPages to a cad topology list of a 64 bit integer
+append pageId to (bookPages's values)
+set bookId to the bim new id in target
+append (@intrinsic("construct", a bim sheetview record, bookId, (the string form of "Detailbook"), (the string form of "D-"), 2, true, the bim refused id, bookPages)) to (modelValue's sheetviews's values)
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -742,6 +757,102 @@ loop viewCursor from 0 to the length of textViews:
     print (((the string form of "direct view ") + (the string form of viewCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
 free pieces
 
+# The drawing types, the sheets and the books of sheets, read from the same
+# texts.
+set pieces to an empty list of a string
+set textDrawingTypes to textModel's drawingTypes's values
+set directDrawingTypes to directModel's drawingTypes's values
+print ((the string form of "text drawing types: ") + (the string form of (the length of textDrawingTypes))) as a line
+print ((the string form of "direct drawing types: ") + (the string form of (the length of directDrawingTypes))) as a line
+loop typeCursor from 0 to the length of textDrawingTypes:
+    set textDrawingType to the item at typeCursor in textDrawingTypes
+    set directDrawingType to the item at typeCursor in directDrawingTypes
+    clear pieces
+    append (the string form of textDrawingType's id) to pieces
+    append textDrawingType's name to pieces
+    append (the string form of textDrawingType's parentId) to pieces
+    append (the string form of textDrawingType's phaseFilter) to pieces
+    append (the bim setting text of (textDrawingType's shown's values)) to pieces
+    append (the bim setting text of (textDrawingType's faint's values)) to pieces
+    append (the bim setting text of (textDrawingType's annotations's values)) to pieces
+    print (((the string form of "text drawing type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directDrawingType's id) to pieces
+    append directDrawingType's name to pieces
+    append (the string form of directDrawingType's parentId) to pieces
+    append (the string form of directDrawingType's phaseFilter) to pieces
+    append (the bim setting text of (directDrawingType's shown's values)) to pieces
+    append (the bim setting text of (directDrawingType's faint's values)) to pieces
+    append (the bim setting text of (directDrawingType's annotations's values)) to pieces
+    print (((the string form of "direct drawing type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSheets to textModel's sheets's values
+set directSheets to directModel's sheets's values
+print ((the string form of "text sheets: ") + (the string form of (the length of textSheets))) as a line
+print ((the string form of "direct sheets: ") + (the string form of (the length of directSheets))) as a line
+loop sheetCursor from 0 to the length of textSheets:
+    set textSheet to the item at sheetCursor in textSheets
+    set directSheet to the item at sheetCursor in directSheets
+    clear pieces
+    append (the string form of textSheet's id) to pieces
+    append textSheet's number to pieces
+    append textSheet's name to pieces
+    append (the string form of textSheet's paper) to pieces
+    append (the string form of textSheet's landscape) to pieces
+    append (the string form of (the length of (textSheet's viewports's values))) to pieces
+    if (the length of (textSheet's viewports's values)) > 0:
+        set textViewport to the item at 0 in (textSheet's viewports's values)
+        append (the string form of textViewport's viewId) to pieces
+        append (the string form of (textViewport's centre's x)) to pieces
+        append (the string form of (textViewport's centre's y)) to pieces
+        append (the string form of (textViewport's modelCentre's x)) to pieces
+        append (the string form of (textViewport's modelCentre's y)) to pieces
+    print (((the string form of "text sheet ") + (the string form of sheetCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSheet's id) to pieces
+    append directSheet's number to pieces
+    append directSheet's name to pieces
+    append (the string form of directSheet's paper) to pieces
+    append (the string form of directSheet's landscape) to pieces
+    append (the string form of (the length of (directSheet's viewports's values))) to pieces
+    if (the length of (directSheet's viewports's values)) > 0:
+        set directViewport to the item at 0 in (directSheet's viewports's values)
+        append (the string form of directViewport's viewId) to pieces
+        append (the string form of (directViewport's centre's x)) to pieces
+        append (the string form of (directViewport's centre's y)) to pieces
+        append (the string form of (directViewport's modelCentre's x)) to pieces
+        append (the string form of (directViewport's modelCentre's y)) to pieces
+    print (((the string form of "direct sheet ") + (the string form of sheetCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textBooks to textModel's sheetviews's values
+set directBooks to directModel's sheetviews's values
+print ((the string form of "text books: ") + (the string form of (the length of textBooks))) as a line
+print ((the string form of "direct books: ") + (the string form of (the length of directBooks))) as a line
+loop bookCursor from 0 to the length of textBooks:
+    set textBook to the item at bookCursor in textBooks
+    set directBook to the item at bookCursor in directBooks
+    clear pieces
+    append (the string form of textBook's id) to pieces
+    append textBook's name to pieces
+    append textBook's prefix to pieces
+    append (the string form of textBook's paper) to pieces
+    append (the string form of textBook's landscape) to pieces
+    append (the string form of textBook's contentsId) to pieces
+    append (the string form of (the length of (textBook's pages's values))) to pieces
+    if (the length of (textBook's pages's values)) > 0:
+        append (the string form of (the item at 0 in (textBook's pages's values))) to pieces
+    print (((the string form of "text book ") + (the string form of bookCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directBook's id) to pieces
+    append directBook's name to pieces
+    append directBook's prefix to pieces
+    append (the string form of directBook's paper) to pieces
+    append (the string form of directBook's landscape) to pieces
+    append (the string form of directBook's contentsId) to pieces
+    append (the string form of (the length of (directBook's pages's values))) to pieces
+    if (the length of (directBook's pages's values)) > 0:
+        append (the string form of (the item at 0 in (directBook's pages's values))) to pieces
+    print (((the string form of "direct book ") + (the string form of bookCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
 # A record kind this module does not build yet is refused by name, not dropped.
 set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
@@ -823,3 +934,39 @@ print ((the string form of "unknown view: ") + fromUnknownView's message) as a l
 set orderedViews to the string form of "{\"data\":[{\"attributes\":{\"openbim::view\":{\"id\":2,\"kind\":0,\"name\":\"Later\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}},{\"attributes\":{\"openbim::view\":{\"id\":1,\"kind\":0,\"name\":\"Earlier\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}}]}"
 set fromOrderedViews to the bim ifcx model of orderedViews
 print ((the string form of "ordered views: ") + fromOrderedViews's message) as a line
+
+# The drawing types, the sheets and the books of sheets keep the text parser's
+# words too: a drawing type without a name and two out of order, a sheet without
+# a number and two out of order, a short viewport and a sheet of an unknown
+# paper, a book without a prefix and two out of order, a page that is no whole
+# number and a book of an unknown paper.
+set namelessDrawingType to the string form of "{\"data\":[{\"attributes\":{\"openbim::drawingType\":{\"id\":1,\"parent\":-1,\"phaseFilter\":-1,\"shown\":\"1\",\"halftone\":\"-\",\"annotations\":\"-\"}}}]}"
+set fromNamelessDrawingType to the bim ifcx model of namelessDrawingType
+print ((the string form of "nameless drawing type: ") + fromNamelessDrawingType's message) as a line
+set orderedDrawingTypes to the string form of "{\"data\":[{\"attributes\":{\"openbim::drawingType\":{\"id\":2,\"name\":\"Later\",\"parent\":-1,\"phaseFilter\":-1}}},{\"attributes\":{\"openbim::drawingType\":{\"id\":1,\"name\":\"Earlier\",\"parent\":-1,\"phaseFilter\":-1}}}]}"
+set fromOrderedDrawingTypes to the bim ifcx model of orderedDrawingTypes
+print ((the string form of "ordered drawing types: ") + fromOrderedDrawingTypes's message) as a line
+set unfinishedSheet to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"paper\":2,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromUnnumberedSheet to the bim ifcx model of unfinishedSheet
+print ((the string form of "unnumbered sheet: ") + fromUnnumberedSheet's message) as a line
+set orderedSheets to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":2,\"number\":\"A-102\",\"name\":\"Later\",\"paper\":2,\"landscape\":0,\"viewports\":[]}}},{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Earlier\",\"paper\":2,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromOrderedSheets to the bim ifcx model of orderedSheets
+print ((the string form of "ordered sheets: ") + fromOrderedSheets's message) as a line
+set shortViewport to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Plan\",\"paper\":2,\"landscape\":0,\"viewports\":[[1,0,0,0]]}}}]}"
+set fromShortViewport to the bim ifcx model of shortViewport
+print ((the string form of "short viewport: ") + fromShortViewport's message) as a line
+set badPaperSheet to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Plan\",\"paper\":5,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromBadPaperSheet to the bim ifcx model of badPaperSheet
+print ((the string form of "bad paper sheet: ") + fromBadPaperSheet's message) as a line
+set unfinishedBook to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"paper\":2,\"landscape\":0,\"pages\":[]}}}]}"
+set fromUnnumberedBook to the bim ifcx model of unfinishedBook
+print ((the string form of "unnumbered book: ") + fromUnnumberedBook's message) as a line
+set orderedBooks to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":2,\"name\":\"Later\",\"prefix\":\"E-\",\"paper\":2,\"landscape\":0,\"pages\":[]}}},{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Earlier\",\"prefix\":\"D-\",\"paper\":2,\"landscape\":0,\"pages\":[]}}}]}"
+set fromOrderedBooks to the bim ifcx model of orderedBooks
+print ((the string form of "ordered books: ") + fromOrderedBooks's message) as a line
+set fractionalPage to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"prefix\":\"D-\",\"paper\":2,\"landscape\":0,\"pages\":[1.5]}}}]}"
+set fromFractionalPage to the bim ifcx model of fractionalPage
+print ((the string form of "fractional page: ") + fromFractionalPage's message) as a line
+set badPaperBook to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"prefix\":\"D-\",\"paper\":9,\"landscape\":0,\"pages\":[]}}}]}"
+set fromBadPaperBook to the bim ifcx model of badPaperBook
+print ((the string form of "bad paper book: ") + fromBadPaperBook's message) as a line

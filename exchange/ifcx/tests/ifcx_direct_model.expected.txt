@@ -190,6 +190,20 @@ text view 0: 25 Ground floor plan 0 1 0 1.2 100 true -1 4 0 0 19 false true 19 t
 direct view 0: 25 Ground floor plan 0 1 0 1.2 100 true -1 4 0 0 19 false true 19 true false -1 false -1 3 5
 text view 1: 26 Section 1 1 1 1 1 50 false 0 4 1 5 19 true false 19 false false -1 false -1 0 0
 direct view 1: 26 Section 1 1 1 1 1 50 false 0 4 1 5 19 true false 19 false false -1 false -1 0 0
+text drawing types: 1
+direct drawing types: 1
+text drawing type 0: 27 Rules -1 -1 1 ---0 -----2
+direct drawing type 0: 27 Rules -1 -1 1 ---0 -----2
+text sheets: 2
+direct sheets: 2
+text sheet 0: 28 A-101 Plan 2 true 1 25 10 20 1 2
+direct sheet 0: 28 A-101 Plan 2 true 1 25 10 20 1 2
+text sheet 1: 29 D-01 Detail 2 true 0
+direct sheet 1: 29 D-01 Detail 2 true 0
+text books: 1
+direct books: 1
+text book 0: 30 Detailbook D- 2 true -1 1 29
+direct book 0: 30 Detailbook D- 2 true -1 1 29
 refused kind: false not built yet: openbim::stair
 crossed slab: a slab outline must not cross itself
 short slab: a slab needs at least 3 corners
@@ -212,3 +226,13 @@ flat space: a space needs a positive height
 lost tag: a tag refers to a missing element
 unknown view: unknown view kind
 ordered views: view ids out of order
+nameless drawing type: malformed drawing type
+ordered drawing types: drawing type ids out of order
+unnumbered sheet: malformed sheet
+ordered sheets: sheet ids out of order
+short viewport: malformed viewport
+bad paper sheet: a sheet's paper is A0 to A4
+unnumbered book: malformed sheetview
+ordered books: sheetview ids out of order
+fractional page: malformed sheetview page
+bad paper book: a sheetview's paper is A0 to A4
