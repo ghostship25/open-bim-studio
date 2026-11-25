@@ -5,7 +5,9 @@
 # instance, a free mesh, two linear types and two linear elements, a space, a
 # tag and two views, a drawing type, a sheet with a view on it and a book of
 # sheets, a stair, a railing along it and a curtain wall, two phases with a
-# phasing, a building system, element settings and element properties.
+# phasing, a building system, element settings and element properties, and a
+# connection with a group of bolts, a reusable connection type and a fastener
+# component, which travel in the project's connectionsV1 payload.
 # The two routes are compared field by field, not byte for byte.
 import bim/bim_index.dl
 import exchange/ifcx/bim_ifcx.dl
@@ -191,6 +193,27 @@ set bim setting (bim opening rule setting) of wallRecord's id to (2 as a 64 bit 
 set bim setting (bim host depth setting) of stairId to (350 as a 64 bit integer) keeping true in target
 set bim property (the string form of "Status") of set (the string form of "OBS_Test") of wallRecord's id to (the string form of "new") typed (the string form of "IfcLabel") in target
 set bim property (the string form of "FireRating") of set (the string form of "Pset_WallCommon") of wallRecord's id to (the string form of "60 min") typed (the string form of "IfcLabel") in target
+
+# The next group of kinds: a connection of the column and the pipe with a group
+# of bolts, a reusable connection type of two member slots, and a fastener
+# component of the frame.
+set columnId to (the item at 0 in (modelValue's linears's values))'s id
+set fastenerParameters to catalogued connection fastener parameters
+set connectionMembers to a cad topology list of a connection member
+append (@intrinsic("construct", a connection member, columnId, 0, 0.0, 0.0)) to (connectionMembers's values)
+append (@intrinsic("construct", a connection member, pipe, 1, 0.0, 0.0)) to (connectionMembers's values)
+set connectionAdditions to a cad topology list of a connection addition
+append (@intrinsic("construct", a connection addition, 1, columnId, 1, (a cad vector3 with x 0.0, y 0.0 and z 0.0), (a cad vector3 with x 0.0, y 0.0 and z 1.0), 0.08, 0.08, 0.02, 0.016, 0.08, 2, 2, 0.04, 0.04, 0.022, fastenerParameters)) to (connectionAdditions's values)
+set connectionId to the bim new id in target
+append (@intrinsic("construct", a connection definition, connectionId, storey, (the string form of "Bolt group"), 1, 3, (a cad vector3 with x 2.0, y 2.0 and z 2.9), connectionMembers, connectionAdditions)) to (modelValue's connections's values)
+set typeMembers to a cad topology list of a connection member
+append (@intrinsic("construct", a connection member, 1 as a 64 bit integer, 0, 0.0, 0.0)) to (typeMembers's values)
+append (@intrinsic("construct", a connection member, 2 as a 64 bit integer, 1, 0.0, 0.0)) to (typeMembers's values)
+set typeAdditions to a cad topology list of a connection addition
+append (@intrinsic("construct", a connection addition, 1, 1 as a 64 bit integer, 1, (a cad vector3 with x 0.0, y 0.0 and z 0.0), (a cad vector3 with x 0.0, y 0.0 and z 1.0), 0.08, 0.08, 0.02, 0.016, 0.08, 2, 2, 0.04, 0.04, 0.022, fastenerParameters)) to (typeAdditions's values)
+set connectionTypeId to the bim new id in target
+append (@intrinsic("construct", a connection definition, connectionTypeId, storey, (the string form of "Bolt type"), 1, 3, (a cad vector3 with x 0.0, y 0.0 and z 0.0), typeMembers, typeAdditions)) to (modelValue's connectionTypes's values)
+append (@intrinsic("construct", a bim fastener component record, componentId, 3, 1, 0.016, 0.08, fastenerParameters)) to (modelValue's fastenerComponents's values)
 
 set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
 set native to the bim native text of ifcx exportText
@@ -1056,6 +1079,132 @@ loop propertyCursor from 0 to the length of textProperties:
     append directProperty's value to pieces
     print (((the string form of "direct property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
 free pieces
+
+# The connections, the reusable connection types and the fastener components,
+# restored from the project's connectionsV1 payload.
+set pieces to an empty list of a string
+set textConnections to textModel's connections's values
+set directConnections to directModel's connections's values
+print ((the string form of "text connections: ") + (the string form of (the length of textConnections))) as a line
+print ((the string form of "direct connections: ") + (the string form of (the length of directConnections))) as a line
+loop connectionCursor from 0 to the length of textConnections:
+    set textConnection to the item at connectionCursor in textConnections
+    set directConnection to the item at connectionCursor in directConnections
+    set textPart to the item at 0 in (textConnection's additions's values)
+    set directPart to the item at 0 in (directConnection's additions's values)
+    clear pieces
+    append (the string form of textConnection's id) to pieces
+    append (the string form of textConnection's levelId) to pieces
+    append textConnection's name to pieces
+    append (the string form of textConnection's category) to pieces
+    append (the string form of textConnection's style) to pieces
+    append (the string form of (textConnection's origin's x)) to pieces
+    append (the string form of (textConnection's origin's z)) to pieces
+    append (the string form of (the length of (textConnection's members's values))) to pieces
+    append (the string form of (the item at 0 in (textConnection's members's values))'s elementId) to pieces
+    append (the string form of (the item at 1 in (textConnection's members's values))'s end) to pieces
+    append (the string form of textPart's key) to pieces
+    append (the string form of textPart's memberId) to pieces
+    append (the string form of textPart's kind) to pieces
+    append (the string form of textPart's rows) to pieces
+    append (the string form of textPart's columnPitch) to pieces
+    append (the string form of textPart's holeDiameter) to pieces
+    append (the string form of textPart's parameters's grade) to pieces
+    append (the string form of textPart's parameters's nuts) to pieces
+    append (the string form of textPart's parameters's catalogue) to pieces
+    print (((the string form of "text connection ") + (the string form of connectionCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directConnection's id) to pieces
+    append (the string form of directConnection's levelId) to pieces
+    append directConnection's name to pieces
+    append (the string form of directConnection's category) to pieces
+    append (the string form of directConnection's style) to pieces
+    append (the string form of (directConnection's origin's x)) to pieces
+    append (the string form of (directConnection's origin's z)) to pieces
+    append (the string form of (the length of (directConnection's members's values))) to pieces
+    append (the string form of (the item at 0 in (directConnection's members's values))'s elementId) to pieces
+    append (the string form of (the item at 1 in (directConnection's members's values))'s end) to pieces
+    append (the string form of directPart's key) to pieces
+    append (the string form of directPart's memberId) to pieces
+    append (the string form of directPart's kind) to pieces
+    append (the string form of directPart's rows) to pieces
+    append (the string form of directPart's columnPitch) to pieces
+    append (the string form of directPart's holeDiameter) to pieces
+    append (the string form of directPart's parameters's grade) to pieces
+    append (the string form of directPart's parameters's nuts) to pieces
+    append (the string form of directPart's parameters's catalogue) to pieces
+    print (((the string form of "direct connection ") + (the string form of connectionCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textTypes to textModel's connectionTypes's values
+set directTypes to directModel's connectionTypes's values
+print ((the string form of "text connection types: ") + (the string form of (the length of textTypes))) as a line
+print ((the string form of "direct connection types: ") + (the string form of (the length of directTypes))) as a line
+loop typeCursor from 0 to the length of textTypes:
+    set textConnectionType to the item at typeCursor in textTypes
+    set directConnectionType to the item at typeCursor in directTypes
+    set textConnectionTypePart to the item at 0 in (textConnectionType's additions's values)
+    set directConnectionTypePart to the item at 0 in (directConnectionType's additions's values)
+    clear pieces
+    append (the string form of textConnectionType's id) to pieces
+    append textConnectionType's name to pieces
+    append (the string form of textConnectionType's category) to pieces
+    append (the string form of textConnectionType's style) to pieces
+    append (the string form of (the length of (textConnectionType's members's values))) to pieces
+    append (the string form of (the item at 1 in (textConnectionType's members's values))'s elementId) to pieces
+    append (the string form of textConnectionTypePart's key) to pieces
+    append (the string form of textConnectionTypePart's memberId) to pieces
+    append (the string form of textConnectionTypePart's kind) to pieces
+    append (the string form of textConnectionTypePart's parameters's threadLength) to pieces
+    append (the string form of textConnectionTypePart's parameters's catalogue) to pieces
+    print (((the string form of "text connection type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directConnectionType's id) to pieces
+    append directConnectionType's name to pieces
+    append (the string form of directConnectionType's category) to pieces
+    append (the string form of directConnectionType's style) to pieces
+    append (the string form of (the length of (directConnectionType's members's values))) to pieces
+    append (the string form of (the item at 1 in (directConnectionType's members's values))'s elementId) to pieces
+    append (the string form of directConnectionTypePart's key) to pieces
+    append (the string form of directConnectionTypePart's memberId) to pieces
+    append (the string form of directConnectionTypePart's kind) to pieces
+    append (the string form of directConnectionTypePart's parameters's threadLength) to pieces
+    append (the string form of directConnectionTypePart's parameters's catalogue) to pieces
+    print (((the string form of "direct connection type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textBindings to textModel's fastenerComponents's values
+set directBindings to directModel's fastenerComponents's values
+print ((the string form of "text fastener components: ") + (the string form of (the length of textBindings))) as a line
+print ((the string form of "direct fastener components: ") + (the string form of (the length of directBindings))) as a line
+loop bindingCursor from 0 to the length of textBindings:
+    set textBinding to the item at bindingCursor in textBindings
+    set directBinding to the item at bindingCursor in directBindings
+    clear pieces
+    append (the string form of textBinding's componentId) to pieces
+    append (the string form of textBinding's librarySlot) to pieces
+    append (the string form of textBinding's kind) to pieces
+    append (the string form of textBinding's diameter) to pieces
+    append (the string form of textBinding's length) to pieces
+    append (the string form of textBinding's parameters's grade) to pieces
+    append (the string form of textBinding's parameters's nutClass) to pieces
+    append (the string form of textBinding's parameters's showThread) to pieces
+    append (the string form of textBinding's parameters's catalogue) to pieces
+    print (((the string form of "text fastener component ") + (the string form of bindingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directBinding's componentId) to pieces
+    append (the string form of directBinding's librarySlot) to pieces
+    append (the string form of directBinding's kind) to pieces
+    append (the string form of directBinding's diameter) to pieces
+    append (the string form of directBinding's length) to pieces
+    append (the string form of directBinding's parameters's grade) to pieces
+    append (the string form of directBinding's parameters's nutClass) to pieces
+    append (the string form of directBinding's parameters's showThread) to pieces
+    append (the string form of directBinding's parameters's catalogue) to pieces
+    print (((the string form of "direct fastener component ") + (the string form of bindingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# A connection payload line the text parser refuses is refused in its words:
+# a fastener component of a component the document does not have.
+set unboundPayloadDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::project\":{\"next\":2,\"connectionsV1\":\"fastenercomponent 9 3 1 0.016 0.08 0 0 88 0 0 1 8 0 0 0 0 1 0 1\"}}},{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground floor\",\"elevation\":0,\"height\":3}}}]}"
+set fromUnboundPayload to the bim ifcx model of unboundPayloadDocument
+print ((the string form of "unbound fastener component: ") + ((the string form of fromUnboundPayload's valid) + ((the string form of " ") + fromUnboundPayload's message))) as a line
 
 # A fastener's analytic construction is derived display data: it is accepted
 # and left out, as the text route never reads it, and what surrounds it still

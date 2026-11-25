@@ -242,6 +242,19 @@ text property 0: 3|OBS_Test|Status|IfcLabel|new
 direct property 0: 3|OBS_Test|Status|IfcLabel|new
 text property 1: 3|Pset_WallCommon|FireRating|IfcLabel|60 min
 direct property 1: 3|Pset_WallCommon|FireRating|IfcLabel|60 min
+text connections: 1
+direct connections: 1
+text connection 0: 37 1 Bolt group 1 3 2 2.9 2 21 1 1 21 1 2 0.04 0.022 88 1 true
+direct connection 0: 37 1 Bolt group 1 3 2 2.9 2 21 1 1 21 1 2 0.04 0.022 88 1 true
+text connection types: 1
+direct connection types: 1
+text connection type 0: 38 Bolt type 1 3 2 2 1 1 1 0 true
+direct connection type 0: 38 Bolt type 1 3 2 2 1 1 1 0 true
+text fastener components: 1
+direct fastener components: 1
+text fastener component 0: 16 3 1 0.016 0.08 88 8 true true
+direct fastener component 0: 16 3 1 0.016 0.08 88 8 true true
+unbound fastener component: false invalid fastener component definition
 fastener csg: true 
 fastener csg levels: 1
 refused kind: false not built yet: openbim::locknut

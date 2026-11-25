@@ -11,11 +11,14 @@
 # spaces, the tags and the views; then the drawing types, the sheets and their
 # books; then the stairs, the railings and the curtain walls; and then the
 # phases and the phasings, the building systems, the element settings and the
-# element properties. A fastener's `openbim::fastenerCSG` is accepted and left
-# out: it is the analytic construction a type derives from its native
-# parameters for display, which the text route never reads either. Any other
-# record kind this module does not build yet is refused by name, so content is
-# never otherwise silently dropped.
+# element properties. The project's `connectionsV1` payload is read last, once
+# every component it hangs on exists: its native `connection` lines become the
+# connections, the reusable connection types and the fastener components, in
+# the text parser's order and words. A fastener's `openbim::fastenerCSG` is
+# accepted and left out: it is the analytic construction a type derives from
+# its native parameters for display, which the text route never reads either.
+# Any other record kind this module does not build yet is refused by name, so
+# content is never otherwise silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -1260,6 +1263,236 @@ local function add bim ifcx model properties {a pointer to a JSON value:record} 
                     set fault to (add bim ifcx model property (the text of lineEntry) into modelValue)
         return fault
 
+# ---------------------------------------------------------------- connections
+
+# The fields of one line of the project's `connectionsV1` payload, read as the
+# text parser reads a native line: whole numbers where the letter of the field
+# in `layout` is `i`, reals where it is `r`.
+class:
+    patterns:
+        [a|] bim ifcx model payload reading
+    members:
+        valid as a boolean
+        reals as the type of (an empty list of a 64 bit floating-point number)
+        wholes as the type of (an empty list of a 64 bit integer)
+
+# Reads fields `first` to `last` (inclusive) of `tokens`, each an integer when
+# its letter in `layout` is `i` and a real when it is `r`.
+local function the bim ifcx model fields {integer:first} to {integer:last} of {a pointer to a list:tokens} laid out as {a string:layout}:
+    execute:
+        set result to @intrinsic("construct", a bim ifcx model payload reading, true, an empty list of a 64 bit floating-point number, an empty list of a 64 bit integer)
+        if (the length of tokens) <= last:
+            set result's valid to false
+            return result
+        loop cursor from first to last + 1:
+            set token to the item at cursor in tokens
+            if (the character at (cursor - first) in layout) = 105:
+                set whole to the bim whole reading of token
+                if whole's valid = false:
+                    set result's valid to false
+                append whole's value to (result's wholes)
+            else:
+                set real to the bim real reading of token
+                if real's valid = false:
+                    set result's valid to false
+                append real's value to (result's reals)
+        return result
+
+local function free bim ifcx model payload reading {bim ifcx model payload reading:reading}:
+    execute:
+        free reading's reals
+        free reading's wholes
+
+# The fastener parameters a payload line carries: two reals, five whole numbers,
+# a real, a whole number, two reals and three more, from the fields the record's
+# layout puts them at (see `bim fastener parameter text`).
+local function the bim ifcx model fastener parameters in {bim ifcx model payload reading:fieldValue} from real {integer:realBase} whole {integer:wholeBase}:
+    execute:
+        return @intrinsic("construct", a connection fastener parameters, the item at realBase in fieldValue's reals, the item at (realBase + 1) in fieldValue's reals, (the item at wholeBase in fieldValue's wholes) as an integer, (the item at (wholeBase + 1) in fieldValue's wholes) as an integer, (the item at (wholeBase + 2) in fieldValue's wholes) as an integer, (the item at (wholeBase + 3) in fieldValue's wholes) as an integer, (the item at (wholeBase + 4) in fieldValue's wholes) as an integer, the item at (realBase + 2) in fieldValue's reals, (the item at (wholeBase + 5) in fieldValue's wholes) as an integer, the item at (realBase + 3) in fieldValue's reals, the item at (realBase + 4) in fieldValue's reals, (the item at (wholeBase + 6) in fieldValue's wholes) = 1, (the item at (wholeBase + 7) in fieldValue's wholes) as an integer, (the item at (wholeBase + 8) in fieldValue's wholes) = 1)
+
+# The parameter whole numbers a payload line carries fit an integer and its two
+# flags are 0 or 1.
+local function bim ifcx model fastener flags in {bim ifcx model payload reading:fieldValue} from whole {integer:wholeBase} are valid:
+    execute:
+        loop parameterCursor from 0 to 9:
+            set rawWhole to the item at (wholeBase + parameterCursor) in fieldValue's wholes
+            if (rawWhole < 0) or (rawWhole > (2147483647 as a 64 bit integer)):
+                return false
+        set shownValue to the item at (wholeBase + 6) in fieldValue's wholes
+        set catalogueValue to the item at (wholeBase + 8) in fieldValue's wholes
+        return ((shownValue = 0) or (shownValue = 1)) and ((catalogueValue = 0) or (catalogueValue = 1))
+
+# A connection or a reusable connection type: `connection <id> <level>
+# <category> <style> <x> <y> <z> <name>`, a type line differing only in what it
+# is kept among. The refusals are the text parser's, in its order: the fields,
+# and the id.
+local function add bim ifcx model connection payload node {a pointer to a list:tokens} into {a pointer to a list:definitions}:
+    execute:
+        set fields to the bim ifcx model fields 1 to 7 of tokens laid out as (the string form of "iiiirrr")
+        set wellFormed to fields's valid and ((the length of tokens) = 9)
+        if wellFormed = false:
+            free bim ifcx model payload reading fields
+            return the string form of "malformed connection"
+        if (bim ifcx model id (the item at 0 in (fields's wholes)) follows definitions) = false:
+            free bim ifcx model payload reading fields
+            return the string form of "connection ids out of order"
+        append (@intrinsic("construct", a connection definition, the item at 0 in (fields's wholes), the item at 1 in (fields's wholes), (the item at 8 in tokens) with "_" replaced by " ", (the item at 2 in (fields's wholes)) as an integer, (the item at 3 in (fields's wholes)) as an integer, (a cad vector3 with x (the item at 0 in (fields's reals)), y (the item at 1 in (fields's reals)) and z (the item at 2 in (fields's reals))), a cad topology list of a connection member, a cad topology list of a connection addition)) to definitions
+        free bim ifcx model payload reading fields
+        return the string form of ""
+
+# A member of the connection above it: `connectionmember <connection> <element>
+# <end> <setback> [<interior position>]`.
+local function add bim ifcx model connection payload member {a pointer to a list:tokens} into {a pointer to a list:definitions}:
+    execute:
+        set fields to the bim ifcx model fields 1 to 4 of tokens laid out as (the string form of "iiir")
+        set wellFormed to fields's valid and (((the length of tokens) = 5) or ((the length of tokens) = 6))
+        if wellFormed = false:
+            free bim ifcx model payload reading fields
+            return the string form of "malformed connection member"
+        set nodeFound to the bim position of (the item at 0 in (fields's wholes)) among definitions
+        if nodeFound's valid = false:
+            free bim ifcx model payload reading fields
+            return the string form of "connection member has no node"
+        set nodeValue to the item at nodeFound's position in definitions
+        set interiorPosition to 0.0
+        if (the length of tokens) = 6:
+            set positionFields to the bim ifcx model fields 5 to 5 of tokens laid out as (the string form of "r")
+            if positionFields's valid:
+                set interiorPosition to the item at 0 in (positionFields's reals)
+            else:
+                free bim ifcx model payload reading positionFields
+                free bim ifcx model payload reading fields
+                return the string form of "malformed interior host position"
+            free bim ifcx model payload reading positionFields
+        append (@intrinsic("construct", a connection member, the item at 1 in (fields's wholes), (the item at 2 in (fields's wholes)) as an integer, the item at 0 in (fields's reals), interiorPosition)) to (nodeValue's members's values)
+        free bim ifcx model payload reading fields
+        return the string form of ""
+
+# An addition of the connection above it: `connectionpart <connection> <key>
+# <member> <kind> <x> <y> <z> <axis x> <axis y> <axis z> <width> <height>
+# <thickness> <diameter> <length> <rows> <columns> <row pitch> <column pitch>
+# <hole diameter>`.
+local function add bim ifcx model connection payload addition {a pointer to a list:tokens} into {a pointer to a list:definitions}:
+    execute:
+        set fields to the bim ifcx model fields 1 to 20 of tokens laid out as (the string form of "iiiirrrrrrrrrrriirrr")
+        set wellFormed to fields's valid and ((the length of tokens) = 21)
+        if wellFormed = false:
+            free bim ifcx model payload reading fields
+            return the string form of "malformed connection addition"
+        set nodeFound to the bim position of (the item at 0 in (fields's wholes)) among definitions
+        if nodeFound's valid = false:
+            free bim ifcx model payload reading fields
+            return the string form of "connection addition has no node"
+        set nodeValue to the item at nodeFound's position in definitions
+        append (@intrinsic("construct", a connection addition, (the item at 1 in (fields's wholes)) as an integer, the item at 2 in (fields's wholes), (the item at 3 in (fields's wholes)) as an integer, (a cad vector3 with x (the item at 0 in (fields's reals)), y (the item at 1 in (fields's reals)) and z (the item at 2 in (fields's reals))), (a cad vector3 with x (the item at 3 in (fields's reals)), y (the item at 4 in (fields's reals)) and z (the item at 5 in (fields's reals))), the item at 6 in (fields's reals), the item at 7 in (fields's reals), the item at 8 in (fields's reals), the item at 9 in (fields's reals), the item at 10 in (fields's reals), (the item at 4 in (fields's wholes)) as an integer, (the item at 5 in (fields's wholes)) as an integer, the item at 11 in (fields's reals), the item at 12 in (fields's reals), the item at 13 in (fields's reals), default connection fastener parameters)) to (nodeValue's additions's values)
+        free bim ifcx model payload reading fields
+        return the string form of ""
+
+# The fastener parameters of an addition of the connection above it:
+# `connectionfastener <connection> <key> <pitch> <thread length> <grade>
+# <coating> <washers> <nuts> <nut class> <grip> <anchor shape> <bend radius>
+# <tail length> <show thread> <head series> <catalogue>`.
+local function add bim ifcx model connection payload fastener {a pointer to a list:tokens} into {a pointer to a list:definitions}:
+    execute:
+        set fields to the bim ifcx model fields 1 to 16 of tokens laid out as (the string form of "iirriiiiirirriii")
+        set wellFormed to fields's valid and ((the length of tokens) = 17)
+        if wellFormed = false:
+            free bim ifcx model payload reading fields
+            return the string form of "malformed connection fastener parameters"
+        if (bim ifcx model fastener flags in fields from whole 2 are valid) = false:
+            free bim ifcx model payload reading fields
+            return the string form of "invalid fastener flags"
+        set nodeFound to the bim position of (the item at 0 in (fields's wholes)) among definitions
+        if nodeFound's valid = false:
+            free bim ifcx model payload reading fields
+            return the string form of "fastener parameters refer to a missing connection"
+        set nodeValue to the item at nodeFound's position in definitions
+        set partPosition to -1
+        loop partCursor from 0 to the length of (nodeValue's additions's values):
+            if (the item at partCursor in (nodeValue's additions's values))'s key = ((the item at 1 in (fields's wholes)) as an integer):
+                set partPosition to partCursor
+        if partPosition < 0:
+            free bim ifcx model payload reading fields
+            return the string form of "fastener parameters refer to a missing addition"
+        set partValue to the item at partPosition in (nodeValue's additions's values)
+        set partValue's parameters to the bim ifcx model fastener parameters in fields from real 0 whole 2
+        set parameterProbe to @intrinsic("construct", a connection fastener, partValue's key, partValue's memberId, partValue's kind, partValue's origin, partValue's axis, partValue's diameter, partValue's length, partValue's parameters)
+        set parameterReason to the connection catalogued fastener issue of parameterProbe
+        if ((partValue's kind != 1) and (partValue's kind != 3)) or (parameterReason != (the string form of "")):
+            free bim ifcx model payload reading fields
+            return the string form of "invalid connection fastener configuration"
+        set nodeValue's additions to the cad clone of nodeValue's additions
+        replace item at index partPosition in (nodeValue's additions's values) with partValue
+        replace item at index nodeFound's position in definitions with nodeValue
+        free bim ifcx model payload reading fields
+        return the string form of ""
+
+# A fastener component of a reusable component it names: `fastenercomponent
+# <component> <library slot> <kind> <diameter> <length> <parameters>`.
+local function add bim ifcx model fastener component payload {a pointer to a list:tokens} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set fields to the bim ifcx model fields 1 to 19 of tokens laid out as (the string form of "iiirrrriiiiirirriii")
+        set wellFormed to fields's valid and ((the length of tokens) = 20)
+        if wellFormed = false:
+            free bim ifcx model payload reading fields
+            return the string form of "malformed fastener component"
+        if (bim ifcx model fastener flags in fields from whole 3 are valid) = false:
+            free bim ifcx model payload reading fields
+            return the string form of "invalid fastener component flags"
+        set bindingValue to @intrinsic("construct", a bim fastener component record, the item at 0 in (fields's wholes), (the item at 1 in (fields's wholes)) as an integer, (the item at 2 in (fields's wholes)) as an integer, the item at 0 in (fields's reals), the item at 1 in (fields's reals), the bim ifcx model fastener parameters in fields from real 2 whole 3)
+        set componentFound to the bim component index of bindingValue's componentId in (@intrinsic("dereference", modelValue))
+        set bindingValid to componentFound's valid and bindingValue's parameters's catalogue
+        if (the length of (modelValue's fastenerComponents's values)) > 0:
+            set bindingValid to bindingValid and (bindingValue's componentId > (the item at ((the length of (modelValue's fastenerComponents's values)) - 1) in (modelValue's fastenerComponents's values))'s componentId)
+        set familyValid to ((bindingValue's kind = 1) or (bindingValue's kind = 3)) or ((bindingValue's kind = 6) or (bindingValue's kind = 7))
+        set parameterProbe to @intrinsic("construct", a connection fastener, 1, bindingValue's componentId, bindingValue's kind, the cad zero vector3, (a cad vector3 with x 0.0, y 0.0 and z 1.0), bindingValue's diameter, bindingValue's length, bindingValue's parameters)
+        set parameterReason to the connection catalogued fastener issue of parameterProbe
+        if ((bindingValue's kind = 6) or (bindingValue's kind = 7)) and ((bindingValue's parameters's nuts != 0) or (bindingValue's parameters's washers != 0)):
+            set bindingValid to false
+        if ((bindingValid and familyValid) = false) or (parameterReason != (the string form of "")):
+            free bim ifcx model payload reading fields
+            return the string form of "invalid fastener component definition"
+        append bindingValue to (modelValue's fastenerComponents's values)
+        free bim ifcx model payload reading fields
+        return the string form of ""
+
+# The project's `connectionsV1` payload, which `the bim connection payload of`
+# writes as native `connection` lines: read straight into the model, never
+# through the text parser. The refusals are that parser's, in its order.
+local function add bim ifcx model connection payload {a string:payload} into {a pointer to a bim model record:modelValue}:
+    execute:
+        set lines to payload split at "\n"
+        set fault to the string form of ""
+        loop cursor from 0 to the length of lines:
+            if (the length of fault) = 0:
+                set line to (the item at cursor in lines) with "\r" replaced by ""
+                if (the length of line) > 0:
+                    set tokens to line split at " "
+                    set kind to the item at 0 in tokens
+                    if kind = (the string form of "connection"):
+                        set fault to (add bim ifcx model connection payload node tokens into (modelValue's connections's values))
+                    else if kind = (the string form of "connectionmember"):
+                        set fault to (add bim ifcx model connection payload member tokens into (modelValue's connections's values))
+                    else if kind = (the string form of "connectionpart"):
+                        set fault to (add bim ifcx model connection payload addition tokens into (modelValue's connections's values))
+                    else if kind = (the string form of "connectionfastener"):
+                        set fault to (add bim ifcx model connection payload fastener tokens into (modelValue's connections's values))
+                    else if kind = (the string form of "connectiontype"):
+                        set fault to (add bim ifcx model connection payload node tokens into (modelValue's connectionTypes's values))
+                    else if kind = (the string form of "connectiontypemember"):
+                        set fault to (add bim ifcx model connection payload member tokens into (modelValue's connectionTypes's values))
+                    else if kind = (the string form of "connectiontypepart"):
+                        set fault to (add bim ifcx model connection payload addition tokens into (modelValue's connectionTypes's values))
+                    else if kind = (the string form of "connectiontypefastener"):
+                        set fault to (add bim ifcx model connection payload fastener tokens into (modelValue's connectionTypes's values))
+                    else if kind = (the string form of "fastenercomponent"):
+                        set fault to (add bim ifcx model fastener component payload tokens into modelValue)
+                    else:
+                        set fault to (the string form of "unknown record ") + kind
+                    free tokens
+        free lines
+        return fault
+
 # ---------------------------------------------------------------- the document
 
 # The model in the IfcX document `content` (JSON text or its binary encoding),
@@ -1284,6 +1517,9 @@ function the bim ifcx model of {a string:content}:
         # the wall types; they are built once every other record is in, as the
         # text parser reads them last.
         set pendingTags to an empty list of a pointer to a JSON value
+        # The project's connection payload, built once every component and
+        # element it refers to is in, as the text route reads it last too.
+        set pendingConnections to an empty list of a string
         loop cursor from 0 to the length of data:
             set node to the JSON value at index cursor in data
             set attributesFound to false
@@ -1300,6 +1536,8 @@ function the bim ifcx model of {a string:content}:
                                 set nextReading to the bim ifcx model whole (the string form of "next") of record
                                 if nextReading's valid:
                                     set modelValue's nextId to nextReading's value
+                                if record has JSON member named (the string form of "connectionsV1"):
+                                    append (the text of (the JSON member named (the string form of "connectionsV1") in record)) to pendingConnections
                             else if entry's name = (the string form of "openbim::level"):
                                 set fault to (add bim ifcx model level record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::walltype"):
@@ -1364,6 +1602,10 @@ function the bim ifcx model of {a string:content}:
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
+        loop cursor from 0 to the length of pendingConnections:
+            if (the length of fault) = 0:
+                set fault to (add bim ifcx model connection payload (the item at cursor in pendingConnections) into (the address of modelValue))
+        free pendingConnections
         loop cursor from 0 to the length of pendingTags:
             if (the length of fault) = 0:
                 set fault to (add bim ifcx model tag (the item at cursor in pendingTags) into (the address of modelValue))
