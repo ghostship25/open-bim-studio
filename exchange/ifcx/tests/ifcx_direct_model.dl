@@ -1,0 +1,1395 @@
+# SPDX-License-Identifier: MPL-2.0
+# The direct IfcX construction (#161, step 3) builds the same model as the
+# text route: one level, a wall type with two layers, a wall carrying a base
+# offset and a top level, a component with parts, solids and connectors, an
+# instance, a free mesh, two linear types and two linear elements, a space, a
+# tag and two views, a drawing type, a sheet with a view on it and a book of
+# sheets, a stair, a railing along it and a curtain wall, two phases with a
+# phasing, a building system, element settings and element properties, and a
+# connection with a group of bolts, a reusable connection type and a fastener
+# component, which travel in the project's connectionsV1 payload.
+# The two routes are compared field by field, not byte for byte.
+import bim/bim_index.dl
+import exchange/ifcx/bim_ifcx.dl
+import exchange/ifcx/bim_ifcx_read.dl
+import exchange/ifcx/bim_ifcx_model.dl
+
+set modelValue to an empty bim model
+set target to the address of modelValue
+set storey to add bim level named (the string form of "Ground floor") at 0.0 with height 3.0 to target
+set layers to an empty list of a bim layer record
+append (@intrinsic("construct", a bim layer record, (the string form of "Brick"), 0.1)) to layers
+append (@intrinsic("construct", a bim layer record, (the string form of "Insulation"), 0.05)) to layers
+set wallType to add bim wall type named (the string form of "Baksteen") with layers to target
+set wall to add bim wall typed wallType on storey from (a cad vector2 with x 0.0 and y 0.0) to (a cad vector2 with x 4.0 and y 0.0) to target
+set wallRecord to the item at 0 in (modelValue's walls's values)
+replace item at index 0 in (modelValue's walls's values) with (@intrinsic("construct", a bim wall record, wallRecord's id, wallRecord's typeId, wallRecord's levelId, wallRecord's start, wallRecord's finish, wallRecord's height, wallRecord's bulge, wallRecord's lean, wallRecord's rise, 0.25, storey))
+
+# The next group of kinds: a slab, a plate of the wall type, an opening type
+# with its opening, and a grid line.
+set outline to an empty list of a cad vector2
+append (a cad vector2 with x -1.0 and y -1.0) to outline
+append (a cad vector2 with x 5.0 and y -1.0) to outline
+append (a cad vector2 with x 5.0 and y 3.0) to outline
+append (a cad vector2 with x -1.0 and y 3.0) to outline
+ignore add bim slab on storey around outline thick 0.2 to target
+free outline
+set plateOutline to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (plateOutline's values)
+append (a cad vector2 with x 3.0 and y 0.0) to (plateOutline's values)
+append (a cad vector2 with x 3.0 and y 2.0) to (plateOutline's values)
+set plateId to the bim new id in target
+append (@intrinsic("construct", a bim slab record, plateId, storey, plateOutline, 0.15, (the string form of "concrete"), wallType, 0.5, 0.0, 0.0)) to (modelValue's slabs's values)
+set windowType to add bim opening type named (the string form of "Raam 900x1200") sized 0.9 by 1.2 with sill 0.9 and frame 0.05 to target
+ignore add bim opening typed windowType in wallRecord's id at 1.5 to target
+ignore add bim grid named (the string form of "A") from (a cad vector2 with x -1.0 and y -1.0) to (a cad vector2 with x -1.0 and y 4.0) reaching -1.0 to 4.0 to target
+
+# The next group of kinds: two dimensions (one placed, one on paper in a view),
+# a line, a face and a text, and a component of two parts.
+set firstEnd to @intrinsic("construct", a bim reference record, wallRecord's id, bim wall start feature)
+set secondEnd to @intrinsic("construct", a bim reference record, wallRecord's id, bim wall finish feature)
+ignore add bim dimension from firstEnd to secondEnd through (a cad vector2 with x 0.0 and y 1.5) to target
+ignore add bim dimension from firstEnd to secondEnd in view (42 as a 64 bit integer) through (a cad vector2 with x 0.0 and y 2.0) outward (a cad vector2 with x 0.0 and y 1.0) at 250.0 paper millimetres to target
+ignore add bim line on storey from (a cad vector2 with x 0.0 and y 4.0) to (a cad vector2 with x 2.0 and y 4.0) to target
+set faceOutline to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to faceOutline
+append (a cad vector2 with x 2.0 and y 0.0) to faceOutline
+append (a cad vector2 with x 2.0 and y 2.0) to faceOutline
+append (a cad vector2 with x 0.0 and y 2.0) to faceOutline
+ignore add bim face on storey around faceOutline to target
+free faceOutline
+ignore add bim text on storey at (a cad vector2 with x 1.0 and y 5.0) saying (the string form of "Label") to target
+set partFaceId to the bim new id in target
+set partLineId to the bim new id in target
+set parts to an empty list of a bim sketch record
+set partOutline to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (partOutline's values)
+append (a cad vector2 with x 0.5 and y 0.0) to (partOutline's values)
+append (a cad vector2 with x 0.5 and y 0.5) to (partOutline's values)
+append (a cad vector2 with x 0.0 and y 0.5) to (partOutline's values)
+append (@intrinsic("construct", a bim sketch record, partFaceId, 0 as a 64 bit integer, bim face sketch, partOutline, 0.05, (the string form of ""))) to parts
+set partLine to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to (partLine's values)
+append (a cad vector2 with x 0.5 and y 0.5) to (partLine's values)
+append (@intrinsic("construct", a bim sketch record, partLineId, 0 as a 64 bit integer, bim line sketch, partLine, 0.0, (the string form of ""))) to parts
+set componentId to add bim component named (the string form of "Frame") to target
+ignore set bim component componentId contents to parts in target
+free parts
+
+# Its solids and connectors: a box, an extrusion and a mesh, and two pipe
+# connectors.
+set noProfile to an empty list of a cad vector2
+ignore add bim solid of kind bim box solid as bim add operation at (a cad vector3 with x 0.0, y 0.0 and z 0.0) sized (a cad vector3 with x 1.0, y 0.5 and z 0.1) turned 0.0 along noProfile of (the string form of "timber") to component componentId in target
+free noProfile
+set solidProfile to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to solidProfile
+append (a cad vector2 with x 1.0 and y 0.0) to solidProfile
+append (a cad vector2 with x 0.0 and y 1.0) to solidProfile
+ignore add bim solid of kind bim extrusion solid as bim subtract operation at (a cad vector3 with x 0.0, y 0.0 and z 0.2) sized (a cad vector3 with x 1.0, y 1.0 and z 0.5) turned 0.25 along solidProfile of (the string form of "steel") to component componentId in target
+free solidProfile
+ignore add bim connector to component componentId as bim terminal component at (a cad vector3 with x 0.5, y 0.0 and z 0.05) pointing (a cad vector3 with x 0.0, y 0.0 and z -1.0) sized 0.015 for bim pipe role in target
+ignore add bim connector to component componentId as bim terminal component at (a cad vector3 with x 0.5, y 0.5 and z 0.05) pointing (a cad vector3 with x 1.0, y 0.0 and z 0.0) sized 0.02 for bim pipe role in target
+
+# A mesh part, whose points and faces the text route writes as two lists.
+set frame to the item at 0 in (modelValue's components's values)
+set solids to the cad clone of frame's solids
+set meshPoints to a cad topology list of a cad vector3
+append (a cad vector3 with x 0.0, y 0.0 and z 0.0) to (meshPoints's values)
+append (a cad vector3 with x 1.0, y 0.0 and z 0.0) to (meshPoints's values)
+append (a cad vector3 with x 0.0, y 1.0 and z 0.0) to (meshPoints's values)
+set meshFaces to a cad topology list of an integer
+append 3 to (meshFaces's values)
+append 0 to (meshFaces's values)
+append 1 to (meshFaces's values)
+append 2 to (meshFaces's values)
+append (@intrinsic("construct", a bim solid part record, bim mesh solid, bim add operation, (a cad vector3 with x 0.0, y 0.0 and z 0.6), (a cad vector3 with x 0.0, y 0.0 and z 0.0), 0.0, a cad topology list of a cad vector2, (the string form of "generic"), meshPoints, meshFaces)) to (solids's values)
+replace item at index 0 in (modelValue's components's values) with (@intrinsic("construct", a bim component record, frame's id, frame's name, frame's sketches, solids, frame's role, frame's connectors))
+
+# The next group of kinds: an instance of the component, a free mesh, two
+# linear types (one round, of a two-word material) and two linear elements,
+# one of them twisted and tapered.
+ignore place bim component componentId on storey at (a cad vector2 with x 1.0 and y 2.0) turned 0.5 to target
+set freePoints to an empty list of a cad vector3
+append (a cad vector3 with x 0.0, y 0.0 and z 0.0) to freePoints
+append (a cad vector3 with x 1.0, y 0.0 and z 0.0) to freePoints
+append (a cad vector3 with x 1.0, y 1.0 and z 0.0) to freePoints
+append (a cad vector3 with x 0.0, y 1.0 and z 0.0) to freePoints
+set freeFaces to an empty list of an integer
+append 3 to freeFaces
+append 0 to freeFaces
+append 1 to freeFaces
+append 2 to freeFaces
+ignore add bim mesh on storey with freePoints and freeFaces to target
+free freePoints
+free freeFaces
+set columnType to add bim linear type named (the string form of "Kolom beton 300x300") as role bim column role sized 0.3 by 0.3 round false of (the string form of "concrete") to target
+set pipeType to add bim linear type named (the string form of "Leiding 100") as role bim pipe role sized 0.1 by 0.1 round true of (the string form of "stainless steel") to target
+ignore add bim linear typed columnType on storey from (a cad vector3 with x 2.0, y 2.0 and z 0.0) to (a cad vector3 with x 2.0, y 2.0 and z 3.0) turned 0.3 to target
+set pipe to add bim linear typed pipeType on storey from (a cad vector3 with x 0.0, y 5.0 and z 0.5) to (a cad vector3 with x 4.0, y 8.0 and z 0.8) turned 0.0 to target
+ignore shape bim linear pipe twisting 0.1 tapering (a cad vector2 with x 1.2 and y 0.8) in target
+
+# The next group of kinds: a space with its number, a tag on the wall, a plan
+# view with a display mode and a depth, and a section view on its cut line.
+set spaceOutline to an empty list of a cad vector2
+append (a cad vector2 with x 0.0 and y 0.0) to spaceOutline
+append (a cad vector2 with x 4.0 and y 0.0) to spaceOutline
+append (a cad vector2 with x 4.0 and y 3.0) to spaceOutline
+append (a cad vector2 with x 0.0 and y 3.0) to spaceOutline
+ignore add bim space object named (the string form of "Kantoor") numbered (the string form of "0.01") on storey around spaceOutline high 2.7 to target
+free spaceOutline
+ignore add bim tag of wallRecord's id at (a cad vector2 with x 2.0 and y 0.5) to target
+set shownFlags to a cad topology list of a boolean
+set faintFlags to a cad topology list of a boolean
+loop category from 0 to 19:
+    append (category > 2) to (shownFlags's values)
+    append (category < 3) to (faintFlags's values)
+set planOrigin to a cad vector2 with x 0.0 and y 0.0
+set planId to the bim new id in target
+append (@intrinsic("construct", a bim view definition record, planId, bim plan view, (the string form of "Ground floor plan"), storey, 0 as a 64 bit integer, 1.2, 100, true, (a cad vector2 with x -1.0 and y -1.0), (a cad vector2 with x 5.0 and y 4.0), shownFlags, faintFlags, planOrigin, planOrigin, the bim refused id, false, the bim refused id, 3, 5.0)) to (modelValue's views's values)
+set sectionShown to a cad topology list of a boolean
+set sectionFaint to a cad topology list of a boolean
+loop category from 0 to 19:
+    append (category < 9) to (sectionShown's values)
+    append false to (sectionFaint's values)
+set sectionId to the bim new id in target
+append (@intrinsic("construct", a bim view definition record, sectionId, bim section view, (the string form of "Section 1"), storey, 1 as a 64 bit integer, 1.0, 50, false, (a cad vector2 with x 0.0 and y -1.0), (a cad vector2 with x 0.0 and y 4.0), sectionShown, sectionFaint, (a cad vector2 with x 1.0 and y 0.0), (a cad vector2 with x 1.0 and y 5.0), the bim refused id, false, the bim refused id, 0, 0.0)) to (modelValue's views's values)
+
+# The next group of kinds: a drawing type, a sheet with a view on it and a book
+# of sheets.
+set rulesId to add bim drawing type named (the string form of "Rules") under (the bim refused id) to target
+ignore set bim drawing type rulesId setting 0 at 0 to 1 in target
+ignore set bim drawing type rulesId setting 1 at 3 to 0 in target
+ignore set bim drawing type rulesId setting 2 at 5 to 2 in target
+set sheetId to add bim sheet numbered (the string form of "A-101") named (the string form of "Plan") on paper 2 landscape true to target
+ignore place bim view planId on sheet sheetId at (a cad vector2 with x 10.0 and y 20.0) looking at (a cad vector2 with x 1.0 and y 2.0) in target
+set pageId to add bim sheet numbered (the string form of "D-01") named (the string form of "Detail") on paper 2 landscape true to target
+set bookPages to a cad topology list of a 64 bit integer
+append pageId to (bookPages's values)
+set bookId to the bim new id in target
+append (@intrinsic("construct", a bim sheetview record, bookId, (the string form of "Detailbook"), (the string form of "D-"), 2, true, the bim refused id, bookPages)) to (modelValue's sheetviews's values)
+
+# The next group of kinds: a stair, a railing along it and a curved curtain
+# wall.
+set stairId to the bim new id in target
+append (@intrinsic("construct", a bim stair record, stairId, storey, (a cad vector2 with x 0.0 and y 6.0), (a cad vector2 with x 0.0 and y 9.0), 1.2, 16, (the string form of "concrete"))) to (modelValue's stairs's values)
+set railingPoints to a cad topology list of a cad vector2
+append (a cad vector2 with x 0.1 and y 6.0) to (railingPoints's values)
+append (a cad vector2 with x 0.1 and y 9.0) to (railingPoints's values)
+set railingId to the bim new id in target
+append (@intrinsic("construct", a bim railing record, railingId, storey, stairId, railingPoints, 1.0, (the string form of "steel"))) to (modelValue's railings's values)
+set curtainId to the bim new id in target
+append (@intrinsic("construct", a bim curtain record, curtainId, storey, (a cad vector2 with x 0.0 and y 0.0), (a cad vector2 with x 4.0 and y 0.0), 3.0, 1.0, 1.5, (the string form of "glass"), 0.5)) to (modelValue's curtains's values)
+
+# The next group of kinds: two phases with the wall's phasing, a ventilation
+# system of the wall and the stair, element settings and element properties
+# (one of them with a space in its set and its value).
+ignore add bim phase named (the string form of "Existing") to target
+set newPhase to add bim phase named (the string form of "New construction") to target
+set bim element wallRecord's id built in newPhase demolished in (the bim refused id) in target
+set systemId to add bim system named (the string form of "Ventilation") of discipline (bim ventilation discipline) to target
+ignore assign bim element wallRecord's id to system systemId in target
+ignore assign bim element stairId to system systemId in target
+set bim setting (bim opening rule setting) of wallRecord's id to (2 as a 64 bit integer) keeping true in target
+set bim setting (bim host depth setting) of stairId to (350 as a 64 bit integer) keeping true in target
+set bim property (the string form of "Status") of set (the string form of "OBS_Test") of wallRecord's id to (the string form of "new") typed (the string form of "IfcLabel") in target
+set bim property (the string form of "FireRating") of set (the string form of "Pset_WallCommon") of wallRecord's id to (the string form of "60 min") typed (the string form of "IfcLabel") in target
+
+# The next group of kinds: a connection of the column and the pipe with a group
+# of bolts, a reusable connection type of two member slots, and a fastener
+# component of the frame.
+set columnId to (the item at 0 in (modelValue's linears's values))'s id
+set fastenerParameters to catalogued connection fastener parameters
+set connectionMembers to a cad topology list of a connection member
+append (@intrinsic("construct", a connection member, columnId, 0, 0.0, 0.0)) to (connectionMembers's values)
+append (@intrinsic("construct", a connection member, pipe, 1, 0.0, 0.0)) to (connectionMembers's values)
+set connectionAdditions to a cad topology list of a connection addition
+append (@intrinsic("construct", a connection addition, 1, columnId, 1, (a cad vector3 with x 0.0, y 0.0 and z 0.0), (a cad vector3 with x 0.0, y 0.0 and z 1.0), 0.08, 0.08, 0.02, 0.016, 0.08, 2, 2, 0.04, 0.04, 0.022, fastenerParameters)) to (connectionAdditions's values)
+set connectionId to the bim new id in target
+append (@intrinsic("construct", a connection definition, connectionId, storey, (the string form of "Bolt group"), 1, 3, (a cad vector3 with x 2.0, y 2.0 and z 2.9), connectionMembers, connectionAdditions)) to (modelValue's connections's values)
+set typeMembers to a cad topology list of a connection member
+append (@intrinsic("construct", a connection member, 1 as a 64 bit integer, 0, 0.0, 0.0)) to (typeMembers's values)
+append (@intrinsic("construct", a connection member, 2 as a 64 bit integer, 1, 0.0, 0.0)) to (typeMembers's values)
+set typeAdditions to a cad topology list of a connection addition
+append (@intrinsic("construct", a connection addition, 1, 1 as a 64 bit integer, 1, (a cad vector3 with x 0.0, y 0.0 and z 0.0), (a cad vector3 with x 0.0, y 0.0 and z 1.0), 0.08, 0.08, 0.02, 0.016, 0.08, 2, 2, 0.04, 0.04, 0.022, fastenerParameters)) to (typeAdditions's values)
+set connectionTypeId to the bim new id in target
+append (@intrinsic("construct", a connection definition, connectionTypeId, storey, (the string form of "Bolt type"), 1, 3, (a cad vector3 with x 0.0, y 0.0 and z 0.0), typeMembers, typeAdditions)) to (modelValue's connectionTypes's values)
+append (@intrinsic("construct", a bim fastener component record, componentId, 3, 1, 0.016, 0.08, fastenerParameters)) to (modelValue's fastenerComponents's values)
+
+set exportText to the bim ifcx text of modelValue identified as (the string form of "m.ifcx") for project (the string form of "m") by (the string form of "test") at (the string form of "2026-11-18T00:00:00Z")
+set native to the bim native text of ifcx exportText
+set fromText to the bim model parsed from native's text
+set fromDirect to the bim ifcx model of exportText
+
+print ((the string form of "text route: ") + ((the string form of fromText's valid) + ((the string form of " ") + fromText's message))) as a line
+print ((the string form of "direct route: ") + ((the string form of fromDirect's valid) + ((the string form of " ") + fromDirect's message))) as a line
+
+set textModel to fromText's modelValue
+set directModel to fromDirect's modelValue
+set textLevel to the item at 0 in (textModel's levels's values)
+set directLevel to the item at 0 in (directModel's levels's values)
+print ((the string form of "text levels: ") + (the string form of (the length of (textModel's levels's values)))) as a line
+print ((the string form of "direct levels: ") + (the string form of (the length of (directModel's levels's values)))) as a line
+print ((the string form of "text level name: ") + textLevel's name) as a line
+print ((the string form of "direct level name: ") + directLevel's name) as a line
+print ((the string form of "text level elevation: ") + (the string form of textLevel's elevation)) as a line
+print ((the string form of "direct level elevation: ") + (the string form of directLevel's elevation)) as a line
+print ((the string form of "text level height: ") + (the string form of textLevel's height)) as a line
+print ((the string form of "direct level height: ") + (the string form of directLevel's height)) as a line
+
+set textType to the item at 0 in (textModel's wallTypes's values)
+set directType to the item at 0 in (directModel's wallTypes's values)
+set textLayer0 to the item at 0 in (textType's layers's values)
+set directLayer0 to the item at 0 in (directType's layers's values)
+set directLayer1 to the item at 1 in (directType's layers's values)
+print ((the string form of "text types: ") + (the string form of (the length of (textModel's wallTypes's values)))) as a line
+print ((the string form of "direct types: ") + (the string form of (the length of (directModel's wallTypes's values)))) as a line
+print ((the string form of "text type name: ") + textType's name) as a line
+print ((the string form of "direct type name: ") + directType's name) as a line
+print ((the string form of "text type role: ") + (the string form of textType's role)) as a line
+print ((the string form of "direct type role: ") + (the string form of directType's role)) as a line
+print ((the string form of "text layers: ") + (the string form of (the length of (textType's layers's values)))) as a line
+print ((the string form of "direct layers: ") + (the string form of (the length of (directType's layers's values)))) as a line
+print ((the string form of "text layer 0: ") + textLayer0's material) as a line
+print ((the string form of "direct layer 0: ") + directLayer0's material) as a line
+print ((the string form of "text layer 0 thickness: ") + (the string form of textLayer0's thickness)) as a line
+print ((the string form of "direct layer 0 thickness: ") + (the string form of directLayer0's thickness)) as a line
+print ((the string form of "direct layer 1: ") + directLayer1's material) as a line
+print ((the string form of "direct layer 1 thickness: ") + (the string form of directLayer1's thickness)) as a line
+
+set textWall to the item at 0 in (textModel's walls's values)
+set directWall to the item at 0 in (directModel's walls's values)
+set textStart to textWall's start
+set textFinish to textWall's finish
+set directStart to directWall's start
+set directFinish to directWall's finish
+print ((the string form of "text walls: ") + (the string form of (the length of (textModel's walls's values)))) as a line
+print ((the string form of "direct walls: ") + (the string form of (the length of (directModel's walls's values)))) as a line
+print ((the string form of "text wall type: ") + (the string form of textWall's typeId)) as a line
+print ((the string form of "direct wall type: ") + (the string form of directWall's typeId)) as a line
+print ((the string form of "text wall level: ") + (the string form of textWall's levelId)) as a line
+print ((the string form of "direct wall level: ") + (the string form of directWall's levelId)) as a line
+print ((the string form of "text wall start x: ") + (the string form of textStart's x)) as a line
+print ((the string form of "direct wall start x: ") + (the string form of directStart's x)) as a line
+print ((the string form of "text wall finish x: ") + (the string form of textFinish's x)) as a line
+print ((the string form of "direct wall finish x: ") + (the string form of directFinish's x)) as a line
+print ((the string form of "text wall height: ") + (the string form of textWall's height)) as a line
+print ((the string form of "direct wall height: ") + (the string form of directWall's height)) as a line
+print ((the string form of "text wall base: ") + (the string form of textWall's baseOffset)) as a line
+print ((the string form of "direct wall base: ") + (the string form of directWall's baseOffset)) as a line
+print ((the string form of "text wall top: ") + (the string form of textWall's topLevelId)) as a line
+print ((the string form of "direct wall top: ") + (the string form of directWall's topLevelId)) as a line
+
+set textOpeningType to the item at 0 in (textModel's openingTypes's values)
+set directOpeningType to the item at 0 in (directModel's openingTypes's values)
+print ((the string form of "text opening types: ") + (the string form of (the length of (textModel's openingTypes's values)))) as a line
+print ((the string form of "direct opening types: ") + (the string form of (the length of (directModel's openingTypes's values)))) as a line
+print ((the string form of "text opening type id: ") + (the string form of textOpeningType's id)) as a line
+print ((the string form of "direct opening type id: ") + (the string form of directOpeningType's id)) as a line
+print ((the string form of "text opening type name: ") + textOpeningType's name) as a line
+print ((the string form of "direct opening type name: ") + directOpeningType's name) as a line
+print ((the string form of "text opening type width: ") + (the string form of textOpeningType's width)) as a line
+print ((the string form of "direct opening type width: ") + (the string form of directOpeningType's width)) as a line
+print ((the string form of "text opening type height: ") + (the string form of textOpeningType's height)) as a line
+print ((the string form of "direct opening type height: ") + (the string form of directOpeningType's height)) as a line
+print ((the string form of "text opening type sill: ") + (the string form of textOpeningType's sill)) as a line
+print ((the string form of "direct opening type sill: ") + (the string form of directOpeningType's sill)) as a line
+print ((the string form of "text opening type frame: ") + (the string form of textOpeningType's frame)) as a line
+print ((the string form of "direct opening type frame: ") + (the string form of directOpeningType's frame)) as a line
+print ((the string form of "text opening type door: ") + (the string form of textOpeningType's isDoor)) as a line
+print ((the string form of "direct opening type door: ") + (the string form of directOpeningType's isDoor)) as a line
+
+set textOpening to the item at 0 in (textModel's openings's values)
+set directOpening to the item at 0 in (directModel's openings's values)
+print ((the string form of "text openings: ") + (the string form of (the length of (textModel's openings's values)))) as a line
+print ((the string form of "direct openings: ") + (the string form of (the length of (directModel's openings's values)))) as a line
+print ((the string form of "text opening id: ") + (the string form of textOpening's id)) as a line
+print ((the string form of "direct opening id: ") + (the string form of directOpening's id)) as a line
+print ((the string form of "text opening type: ") + (the string form of textOpening's typeId)) as a line
+print ((the string form of "direct opening type: ") + (the string form of directOpening's typeId)) as a line
+print ((the string form of "text opening host: ") + (the string form of textOpening's hostId)) as a line
+print ((the string form of "direct opening host: ") + (the string form of directOpening's hostId)) as a line
+print ((the string form of "text opening offset: ") + (the string form of textOpening's offset)) as a line
+print ((the string form of "direct opening offset: ") + (the string form of directOpening's offset)) as a line
+
+set textSlab to the item at 0 in (textModel's slabs's values)
+set directSlab to the item at 0 in (directModel's slabs's values)
+set textPlate to the item at 1 in (textModel's slabs's values)
+set directPlate to the item at 1 in (directModel's slabs's values)
+set textCorner to the item at 0 in (textSlab's outline's values)
+set directCorner to the item at 0 in (directSlab's outline's values)
+print ((the string form of "text slabs: ") + (the string form of (the length of (textModel's slabs's values)))) as a line
+print ((the string form of "direct slabs: ") + (the string form of (the length of (directModel's slabs's values)))) as a line
+print ((the string form of "text slab id: ") + (the string form of textSlab's id)) as a line
+print ((the string form of "direct slab id: ") + (the string form of directSlab's id)) as a line
+print ((the string form of "text slab level: ") + (the string form of textSlab's levelId)) as a line
+print ((the string form of "direct slab level: ") + (the string form of directSlab's levelId)) as a line
+print ((the string form of "text slab thickness: ") + (the string form of textSlab's thickness)) as a line
+print ((the string form of "direct slab thickness: ") + (the string form of directSlab's thickness)) as a line
+print ((the string form of "text slab material: ") + textSlab's material) as a line
+print ((the string form of "direct slab material: ") + directSlab's material) as a line
+print ((the string form of "text slab type: ") + (the string form of textSlab's typeId)) as a line
+print ((the string form of "direct slab type: ") + (the string form of directSlab's typeId)) as a line
+print ((the string form of "text slab corners: ") + (the string form of (the length of (textSlab's outline's values)))) as a line
+print ((the string form of "direct slab corners: ") + (the string form of (the length of (directSlab's outline's values)))) as a line
+print ((the string form of "text slab corner 0 x: ") + (the string form of textCorner's x)) as a line
+print ((the string form of "direct slab corner 0 x: ") + (the string form of directCorner's x)) as a line
+print ((the string form of "text plate id: ") + (the string form of textPlate's id)) as a line
+print ((the string form of "direct plate id: ") + (the string form of directPlate's id)) as a line
+print ((the string form of "text plate type: ") + (the string form of textPlate's typeId)) as a line
+print ((the string form of "direct plate type: ") + (the string form of directPlate's typeId)) as a line
+print ((the string form of "text plate thickness: ") + (the string form of textPlate's thickness)) as a line
+print ((the string form of "direct plate thickness: ") + (the string form of directPlate's thickness)) as a line
+print ((the string form of "text plate top: ") + (the string form of textPlate's top)) as a line
+print ((the string form of "direct plate top: ") + (the string form of directPlate's top)) as a line
+print ((the string form of "text plate heading: ") + (the string form of textPlate's heading)) as a line
+print ((the string form of "direct plate heading: ") + (the string form of directPlate's heading)) as a line
+
+set textGrid to the item at 0 in (textModel's grids's values)
+set directGrid to the item at 0 in (directModel's grids's values)
+set textGridStart to textGrid's start
+set textGridFinish to textGrid's finish
+set directGridStart to directGrid's start
+set directGridFinish to directGrid's finish
+print ((the string form of "text grids: ") + (the string form of (the length of (textModel's grids's values)))) as a line
+print ((the string form of "direct grids: ") + (the string form of (the length of (directModel's grids's values)))) as a line
+print ((the string form of "text grid id: ") + (the string form of textGrid's id)) as a line
+print ((the string form of "direct grid id: ") + (the string form of directGrid's id)) as a line
+print ((the string form of "text grid name: ") + textGrid's name) as a line
+print ((the string form of "direct grid name: ") + directGrid's name) as a line
+print ((the string form of "text grid start x: ") + (the string form of textGridStart's x)) as a line
+print ((the string form of "direct grid start x: ") + (the string form of directGridStart's x)) as a line
+print ((the string form of "text grid finish y: ") + (the string form of textGridFinish's y)) as a line
+print ((the string form of "direct grid finish y: ") + (the string form of directGridFinish's y)) as a line
+print ((the string form of "text grid low: ") + (the string form of textGrid's low)) as a line
+print ((the string form of "direct grid low: ") + (the string form of directGrid's low)) as a line
+print ((the string form of "text grid high: ") + (the string form of textGrid's high)) as a line
+print ((the string form of "direct grid high: ") + (the string form of directGrid's high)) as a line
+
+set textDimensions to textModel's dimensions's values
+set directDimensions to directModel's dimensions's values
+set textPlacedDimension to the item at 0 in textDimensions
+set directPlacedDimension to the item at 0 in directDimensions
+set textPaperDimension to the item at 1 in textDimensions
+set directPaperDimension to the item at 1 in directDimensions
+set textPlace to textPlacedDimension's place
+set directPlace to directPlacedDimension's place
+set textOutward to textPaperDimension's outward
+set directOutward to directPaperDimension's outward
+print ((the string form of "text dimensions: ") + (the string form of (the length of textDimensions))) as a line
+print ((the string form of "direct dimensions: ") + (the string form of (the length of directDimensions))) as a line
+print ((the string form of "text dimension 0 first: ") + ((the string form of textPlacedDimension's first's elementId) + ((the string form of " ") + (the string form of textPlacedDimension's first's feature)))) as a line
+print ((the string form of "direct dimension 0 first: ") + ((the string form of directPlacedDimension's first's elementId) + ((the string form of " ") + (the string form of directPlacedDimension's first's feature)))) as a line
+print ((the string form of "text dimension 0 second: ") + ((the string form of textPlacedDimension's second's elementId) + ((the string form of " ") + (the string form of textPlacedDimension's second's feature)))) as a line
+print ((the string form of "direct dimension 0 second: ") + ((the string form of directPlacedDimension's second's elementId) + ((the string form of " ") + (the string form of directPlacedDimension's second's feature)))) as a line
+print ((the string form of "text dimension 0 placed: ") + (the string form of textPlacedDimension's placed)) as a line
+print ((the string form of "direct dimension 0 placed: ") + (the string form of directPlacedDimension's placed)) as a line
+print ((the string form of "text dimension 0 place x: ") + (the string form of textPlace's x)) as a line
+print ((the string form of "direct dimension 0 place x: ") + (the string form of directPlace's x)) as a line
+print ((the string form of "text dimension 0 place y: ") + (the string form of textPlace's y)) as a line
+print ((the string form of "direct dimension 0 place y: ") + (the string form of directPlace's y)) as a line
+print ((the string form of "text dimension 0 view: ") + (the string form of textPlacedDimension's viewId)) as a line
+print ((the string form of "direct dimension 0 view: ") + (the string form of directPlacedDimension's viewId)) as a line
+print ((the string form of "text dimension 1 paper: ") + (the string form of textPaperDimension's paperOffset)) as a line
+print ((the string form of "direct dimension 1 paper: ") + (the string form of directPaperDimension's paperOffset)) as a line
+print ((the string form of "text dimension 1 outward y: ") + (the string form of textOutward's y)) as a line
+print ((the string form of "direct dimension 1 outward y: ") + (the string form of directOutward's y)) as a line
+print ((the string form of "text dimension 1 view: ") + (the string form of textPaperDimension's viewId)) as a line
+print ((the string form of "direct dimension 1 view: ") + (the string form of directPaperDimension's viewId)) as a line
+
+set textSketches to textModel's sketches's values
+set directSketches to directModel's sketches's values
+set textLineSketch to the item at 0 in textSketches
+set directLineSketch to the item at 0 in directSketches
+set textFaceSketch to the item at 1 in textSketches
+set directFaceSketch to the item at 1 in directSketches
+set textWordSketch to the item at 2 in textSketches
+set directWordSketch to the item at 2 in directSketches
+print ((the string form of "text sketches: ") + (the string form of (the length of textSketches))) as a line
+print ((the string form of "direct sketches: ") + (the string form of (the length of directSketches))) as a line
+set pieces to an empty list of a string
+append (the string form of textLineSketch's kind) to pieces
+append (the string form of textLineSketch's levelId) to pieces
+append (the string form of (the length of (textLineSketch's points's values))) to pieces
+append (the string form of textLineSketch's height) to pieces
+print ((the string form of "text line sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directLineSketch's kind) to pieces
+append (the string form of directLineSketch's levelId) to pieces
+append (the string form of (the length of (directLineSketch's points's values))) to pieces
+append (the string form of directLineSketch's height) to pieces
+print ((the string form of "direct line sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textFaceSketch's kind) to pieces
+append (the string form of (the length of (textFaceSketch's points's values))) to pieces
+append (the string form of textFaceSketch's height) to pieces
+print ((the string form of "text face sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directFaceSketch's kind) to pieces
+append (the string form of (the length of (directFaceSketch's points's values))) to pieces
+append (the string form of directFaceSketch's height) to pieces
+print ((the string form of "direct face sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textWordSketch's kind) to pieces
+append (the string form of (the length of (textWordSketch's points's values))) to pieces
+append (the string form of textWordSketch's height) to pieces
+append textWordSketch's content to pieces
+print ((the string form of "text word sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directWordSketch's kind) to pieces
+append (the string form of (the length of (directWordSketch's points's values))) to pieces
+append (the string form of directWordSketch's height) to pieces
+append directWordSketch's content to pieces
+print ((the string form of "direct word sketch: ") + (pieces joined with " ")) as a line
+clear pieces
+set textComponents to textModel's components's values
+set directComponents to directModel's components's values
+set textComponent to the item at 0 in textComponents
+set directComponent to the item at 0 in directComponents
+set textParts to textComponent's sketches's values
+set directParts to directComponent's sketches's values
+set textPartFace to the item at 0 in textParts
+set directPartFace to the item at 0 in directParts
+set textPartLine to the item at 1 in textParts
+set directPartLine to the item at 1 in directParts
+print ((the string form of "text components: ") + (the string form of (the length of textComponents))) as a line
+print ((the string form of "direct components: ") + (the string form of (the length of directComponents))) as a line
+append (the string form of textComponent's id) to pieces
+append textComponent's name to pieces
+append (the string form of (the length of textParts)) to pieces
+print ((the string form of "text component: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directComponent's id) to pieces
+append directComponent's name to pieces
+append (the string form of (the length of directParts)) to pieces
+print ((the string form of "direct component: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textPartFace's kind) to pieces
+append (the string form of (the length of (textPartFace's points's values))) to pieces
+append (the string form of textPartFace's height) to pieces
+append (the string form of textPartFace's levelId) to pieces
+print ((the string form of "text part face: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directPartFace's kind) to pieces
+append (the string form of (the length of (directPartFace's points's values))) to pieces
+append (the string form of directPartFace's height) to pieces
+append (the string form of directPartFace's levelId) to pieces
+print ((the string form of "direct part face: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textPartLine's kind) to pieces
+append (the string form of (the length of (textPartLine's points's values))) to pieces
+append (the string form of textPartLine's height) to pieces
+print ((the string form of "text part line: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directPartLine's kind) to pieces
+append (the string form of (the length of (directPartLine's points's values))) to pieces
+append (the string form of directPartLine's height) to pieces
+print ((the string form of "direct part line: ") + (pieces joined with " ")) as a line
+clear pieces
+
+# The solids and connectors of the component, read from the same texts.
+set textSolids to textComponent's solids's values
+set directSolids to directComponent's solids's values
+set textConnectors to textComponent's connectors's values
+set directConnectors to directComponent's connectors's values
+print ((the string form of "text solids: ") + (the string form of (the length of textSolids))) as a line
+print ((the string form of "direct solids: ") + (the string form of (the length of directSolids))) as a line
+print ((the string form of "text connectors: ") + (the string form of (the length of textConnectors))) as a line
+print ((the string form of "direct connectors: ") + (the string form of (the length of directConnectors))) as a line
+print ((the string form of "text component role: ") + (the string form of textComponent's role)) as a line
+print ((the string form of "direct component role: ") + (the string form of directComponent's role)) as a line
+set textBox to the item at 0 in textSolids
+set directBox to the item at 0 in directSolids
+set textWedge to the item at 1 in textSolids
+set directWedge to the item at 1 in directSolids
+set textMeshPart to the item at 2 in textSolids
+set directMeshPart to the item at 2 in directSolids
+append (the string form of textBox's kind) to pieces
+append (the string form of textBox's operation) to pieces
+append (the string form of (textBox's origin's z)) to pieces
+append (the string form of (textBox's size's x)) to pieces
+append (the string form of textBox's angle) to pieces
+append (the string form of (the length of (textBox's profile's values))) to pieces
+append textBox's material to pieces
+append (the string form of (the length of (textBox's points's values))) to pieces
+append (the string form of (the length of (textBox's faces's values))) to pieces
+print ((the string form of "text solid 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directBox's kind) to pieces
+append (the string form of directBox's operation) to pieces
+append (the string form of (directBox's origin's z)) to pieces
+append (the string form of (directBox's size's x)) to pieces
+append (the string form of directBox's angle) to pieces
+append (the string form of (the length of (directBox's profile's values))) to pieces
+append directBox's material to pieces
+append (the string form of (the length of (directBox's points's values))) to pieces
+append (the string form of (the length of (directBox's faces's values))) to pieces
+print ((the string form of "direct solid 0: ") + (pieces joined with " ")) as a line
+clear pieces
+set textWedgeCorner to the item at 1 in (textWedge's profile's values)
+set directWedgeCorner to the item at 1 in (directWedge's profile's values)
+append (the string form of textWedge's kind) to pieces
+append (the string form of textWedge's operation) to pieces
+append (the string form of (textWedge's origin's z)) to pieces
+append (the string form of (textWedge's size's z)) to pieces
+append (the string form of textWedge's angle) to pieces
+append (the string form of (the length of (textWedge's profile's values))) to pieces
+append (the string form of textWedgeCorner's x) to pieces
+append textWedge's material to pieces
+print ((the string form of "text solid 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directWedge's kind) to pieces
+append (the string form of directWedge's operation) to pieces
+append (the string form of (directWedge's origin's z)) to pieces
+append (the string form of (directWedge's size's z)) to pieces
+append (the string form of directWedge's angle) to pieces
+append (the string form of (the length of (directWedge's profile's values))) to pieces
+append (the string form of directWedgeCorner's x) to pieces
+append directWedge's material to pieces
+print ((the string form of "direct solid 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of textMeshPart's kind) to pieces
+append (the string form of (the length of (textMeshPart's points's values))) to pieces
+append (the string form of (the length of (textMeshPart's faces's values))) to pieces
+append (the string form of (the item at 0 in (textMeshPart's faces's values))) to pieces
+append (the string form of (the item at 1 in (textMeshPart's faces's values))) to pieces
+append textMeshPart's material to pieces
+print ((the string form of "text solid 2: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directMeshPart's kind) to pieces
+append (the string form of (the length of (directMeshPart's points's values))) to pieces
+append (the string form of (the length of (directMeshPart's faces's values))) to pieces
+append (the string form of (the item at 0 in (directMeshPart's faces's values))) to pieces
+append (the string form of (the item at 1 in (directMeshPart's faces's values))) to pieces
+append directMeshPart's material to pieces
+print ((the string form of "direct solid 2: ") + (pieces joined with " ")) as a line
+clear pieces
+set textConnector to the item at 0 in textConnectors
+set directConnector to the item at 0 in directConnectors
+set textOtherConnector to the item at 1 in textConnectors
+set directOtherConnector to the item at 1 in directConnectors
+append (the string form of (textConnector's spot's x)) to pieces
+append (the string form of (textConnector's spot's z)) to pieces
+append (the string form of (textConnector's direction's z)) to pieces
+append (the string form of textConnector's size) to pieces
+append (the string form of textConnector's role) to pieces
+print ((the string form of "text connector 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (directConnector's spot's x)) to pieces
+append (the string form of (directConnector's spot's z)) to pieces
+append (the string form of (directConnector's direction's z)) to pieces
+append (the string form of directConnector's size) to pieces
+append (the string form of directConnector's role) to pieces
+print ((the string form of "direct connector 0: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (textOtherConnector's spot's y)) to pieces
+append (the string form of (textOtherConnector's direction's x)) to pieces
+append (the string form of textOtherConnector's size) to pieces
+append (the string form of textOtherConnector's role) to pieces
+print ((the string form of "text connector 1: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of (directOtherConnector's spot's y)) to pieces
+append (the string form of (directOtherConnector's direction's x)) to pieces
+append (the string form of directOtherConnector's size) to pieces
+append (the string form of directOtherConnector's role) to pieces
+print ((the string form of "direct connector 1: ") + (pieces joined with " ")) as a line
+free pieces
+
+# The instances, the mesh and the linears, read from the same texts.
+set pieces to an empty list of a string
+set textInstances to textModel's instances's values
+set directInstances to directModel's instances's values
+print ((the string form of "text instances: ") + (the string form of (the length of textInstances))) as a line
+print ((the string form of "direct instances: ") + (the string form of (the length of directInstances))) as a line
+set textInstance to the item at 0 in textInstances
+set directInstance to the item at 0 in directInstances
+append (the string form of textInstance's id) to pieces
+append (the string form of textInstance's componentId) to pieces
+append (the string form of textInstance's levelId) to pieces
+append (the string form of (textInstance's origin's x)) to pieces
+append (the string form of (textInstance's origin's y)) to pieces
+append (the string form of textInstance's angle) to pieces
+append (the string form of textInstance's viewId) to pieces
+print ((the string form of "text instance: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directInstance's id) to pieces
+append (the string form of directInstance's componentId) to pieces
+append (the string form of directInstance's levelId) to pieces
+append (the string form of (directInstance's origin's x)) to pieces
+append (the string form of (directInstance's origin's y)) to pieces
+append (the string form of directInstance's angle) to pieces
+append (the string form of directInstance's viewId) to pieces
+print ((the string form of "direct instance: ") + (pieces joined with " ")) as a line
+clear pieces
+set textMeshes to textModel's meshes's values
+set directMeshes to directModel's meshes's values
+print ((the string form of "text meshes: ") + (the string form of (the length of textMeshes))) as a line
+print ((the string form of "direct meshes: ") + (the string form of (the length of directMeshes))) as a line
+set textMesh to the item at 0 in textMeshes
+set directMesh to the item at 0 in directMeshes
+append (the string form of textMesh's id) to pieces
+append (the string form of textMesh's levelId) to pieces
+append (the string form of (the length of (textMesh's vertices's values))) to pieces
+append (the string form of (the length of (textMesh's faces's values))) to pieces
+append (the string form of (the item at 2 in (textMesh's vertices's values))'s x) to pieces
+append (the string form of (the item at 3 in (textMesh's faces's values))) to pieces
+print ((the string form of "text mesh: ") + (pieces joined with " ")) as a line
+clear pieces
+append (the string form of directMesh's id) to pieces
+append (the string form of directMesh's levelId) to pieces
+append (the string form of (the length of (directMesh's vertices's values))) to pieces
+append (the string form of (the length of (directMesh's faces's values))) to pieces
+append (the string form of (the item at 2 in (directMesh's vertices's values))'s x) to pieces
+append (the string form of (the item at 3 in (directMesh's faces's values))) to pieces
+print ((the string form of "direct mesh: ") + (pieces joined with " ")) as a line
+clear pieces
+set textLinearTypes to textModel's linearTypes's values
+set directLinearTypes to directModel's linearTypes's values
+print ((the string form of "text linear types: ") + (the string form of (the length of textLinearTypes))) as a line
+print ((the string form of "direct linear types: ") + (the string form of (the length of directLinearTypes))) as a line
+loop typeCursor from 0 to the length of textLinearTypes:
+    set textLinearType to the item at typeCursor in textLinearTypes
+    set directLinearType to the item at typeCursor in directLinearTypes
+    clear pieces
+    append (the string form of textLinearType's id) to pieces
+    append textLinearType's name to pieces
+    append (the string form of textLinearType's role) to pieces
+    append (the string form of textLinearType's width) to pieces
+    append (the string form of textLinearType's depth) to pieces
+    append (the string form of textLinearType's round) to pieces
+    append textLinearType's material to pieces
+    print (((the string form of "text linear type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directLinearType's id) to pieces
+    append directLinearType's name to pieces
+    append (the string form of directLinearType's role) to pieces
+    append (the string form of directLinearType's width) to pieces
+    append (the string form of directLinearType's depth) to pieces
+    append (the string form of directLinearType's round) to pieces
+    append directLinearType's material to pieces
+    print (((the string form of "direct linear type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textLinears to textModel's linears's values
+set directLinears to directModel's linears's values
+print ((the string form of "text linears: ") + (the string form of (the length of textLinears))) as a line
+print ((the string form of "direct linears: ") + (the string form of (the length of directLinears))) as a line
+loop linearCursor from 0 to the length of textLinears:
+    set textLinear to the item at linearCursor in textLinears
+    set directLinear to the item at linearCursor in directLinears
+    clear pieces
+    append (the string form of textLinear's id) to pieces
+    append (the string form of textLinear's typeId) to pieces
+    append (the string form of textLinear's levelId) to pieces
+    append (the string form of (textLinear's start's x)) to pieces
+    append (the string form of (textLinear's start's z)) to pieces
+    append (the string form of (textLinear's finish's z)) to pieces
+    append (the string form of textLinear's angle) to pieces
+    append (the string form of textLinear's twist) to pieces
+    append (the string form of (textLinear's taper's x)) to pieces
+    append (the string form of (textLinear's taper's y)) to pieces
+    print (((the string form of "text linear ") + (the string form of linearCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directLinear's id) to pieces
+    append (the string form of directLinear's typeId) to pieces
+    append (the string form of directLinear's levelId) to pieces
+    append (the string form of (directLinear's start's x)) to pieces
+    append (the string form of (directLinear's start's z)) to pieces
+    append (the string form of (directLinear's finish's z)) to pieces
+    append (the string form of directLinear's angle) to pieces
+    append (the string form of directLinear's twist) to pieces
+    append (the string form of (directLinear's taper's x)) to pieces
+    append (the string form of (directLinear's taper's y)) to pieces
+    print (((the string form of "direct linear ") + (the string form of linearCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# The spaces, the tags and the views, read from the same texts.
+set pieces to an empty list of a string
+set textSpaces to textModel's spaceObjects's values
+set directSpaces to directModel's spaceObjects's values
+print ((the string form of "text spaces: ") + (the string form of (the length of textSpaces))) as a line
+print ((the string form of "direct spaces: ") + (the string form of (the length of directSpaces))) as a line
+loop spaceCursor from 0 to the length of textSpaces:
+    set textSpace to the item at spaceCursor in textSpaces
+    set directSpace to the item at spaceCursor in directSpaces
+    clear pieces
+    append (the string form of textSpace's id) to pieces
+    append (the string form of textSpace's levelId) to pieces
+    append textSpace's name to pieces
+    append textSpace's number to pieces
+    append (the string form of textSpace's height) to pieces
+    append (the string form of (the length of (textSpace's outline's values))) to pieces
+    append (the string form of (the item at 2 in (textSpace's outline's values))'s x) to pieces
+    append (the string form of (the item at 2 in (textSpace's outline's values))'s y) to pieces
+    print (((the string form of "text space ") + (the string form of spaceCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSpace's id) to pieces
+    append (the string form of directSpace's levelId) to pieces
+    append directSpace's name to pieces
+    append directSpace's number to pieces
+    append (the string form of directSpace's height) to pieces
+    append (the string form of (the length of (directSpace's outline's values))) to pieces
+    append (the string form of (the item at 2 in (directSpace's outline's values))'s x) to pieces
+    append (the string form of (the item at 2 in (directSpace's outline's values))'s y) to pieces
+    print (((the string form of "direct space ") + (the string form of spaceCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textTags to textModel's tags's values
+set directTags to directModel's tags's values
+print ((the string form of "text tags: ") + (the string form of (the length of textTags))) as a line
+print ((the string form of "direct tags: ") + (the string form of (the length of directTags))) as a line
+loop tagCursor from 0 to the length of textTags:
+    set textTag to the item at tagCursor in textTags
+    set directTag to the item at tagCursor in directTags
+    clear pieces
+    append (the string form of textTag's id) to pieces
+    append (the string form of textTag's elementId) to pieces
+    append (the string form of (textTag's place's x)) to pieces
+    append (the string form of (textTag's place's y)) to pieces
+    print (((the string form of "text tag ") + (the string form of tagCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directTag's id) to pieces
+    append (the string form of directTag's elementId) to pieces
+    append (the string form of (directTag's place's x)) to pieces
+    append (the string form of (directTag's place's y)) to pieces
+    print (((the string form of "direct tag ") + (the string form of tagCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textViews to textModel's views's values
+set directViews to directModel's views's values
+print ((the string form of "text views: ") + (the string form of (the length of textViews))) as a line
+print ((the string form of "direct views: ") + (the string form of (the length of directViews))) as a line
+loop viewCursor from 0 to the length of textViews:
+    set textView to the item at viewCursor in textViews
+    set directView to the item at viewCursor in directViews
+    clear pieces
+    append (the string form of textView's id) to pieces
+    append textView's name to pieces
+    append (the string form of textView's kind) to pieces
+    append (the string form of textView's levelId) to pieces
+    append (the string form of textView's detail) to pieces
+    append (the string form of textView's cutHeight) to pieces
+    append (the string form of textView's scale) to pieces
+    append (the string form of textView's cropped) to pieces
+    append (the string form of (textView's cropLow's x)) to pieces
+    append (the string form of (textView's cropHigh's y)) to pieces
+    append (the string form of (textView's lineStart's x)) to pieces
+    append (the string form of (textView's lineFinish's y)) to pieces
+    append (the string form of (the length of (textView's shown's values))) to pieces
+    append (the string form of (the item at 0 in (textView's shown's values))) to pieces
+    append (the string form of (the item at 18 in (textView's shown's values))) to pieces
+    append (the string form of (the length of (textView's faint's values))) to pieces
+    append (the string form of (the item at 0 in (textView's faint's values))) to pieces
+    append (the string form of (the item at 18 in (textView's faint's values))) to pieces
+    append (the string form of textView's drawingTypeId) to pieces
+    append (the string form of textView's automatic) to pieces
+    append (the string form of textView's phaseId) to pieces
+    append (the string form of textView's displayMode) to pieces
+    append (the string form of textView's depth) to pieces
+    print (((the string form of "text view ") + (the string form of viewCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directView's id) to pieces
+    append directView's name to pieces
+    append (the string form of directView's kind) to pieces
+    append (the string form of directView's levelId) to pieces
+    append (the string form of directView's detail) to pieces
+    append (the string form of directView's cutHeight) to pieces
+    append (the string form of directView's scale) to pieces
+    append (the string form of directView's cropped) to pieces
+    append (the string form of (directView's cropLow's x)) to pieces
+    append (the string form of (directView's cropHigh's y)) to pieces
+    append (the string form of (directView's lineStart's x)) to pieces
+    append (the string form of (directView's lineFinish's y)) to pieces
+    append (the string form of (the length of (directView's shown's values))) to pieces
+    append (the string form of (the item at 0 in (directView's shown's values))) to pieces
+    append (the string form of (the item at 18 in (directView's shown's values))) to pieces
+    append (the string form of (the length of (directView's faint's values))) to pieces
+    append (the string form of (the item at 0 in (directView's faint's values))) to pieces
+    append (the string form of (the item at 18 in (directView's faint's values))) to pieces
+    append (the string form of directView's drawingTypeId) to pieces
+    append (the string form of directView's automatic) to pieces
+    append (the string form of directView's phaseId) to pieces
+    append (the string form of directView's displayMode) to pieces
+    append (the string form of directView's depth) to pieces
+    print (((the string form of "direct view ") + (the string form of viewCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# The drawing types, the sheets and the books of sheets, read from the same
+# texts.
+set pieces to an empty list of a string
+set textDrawingTypes to textModel's drawingTypes's values
+set directDrawingTypes to directModel's drawingTypes's values
+print ((the string form of "text drawing types: ") + (the string form of (the length of textDrawingTypes))) as a line
+print ((the string form of "direct drawing types: ") + (the string form of (the length of directDrawingTypes))) as a line
+loop typeCursor from 0 to the length of textDrawingTypes:
+    set textDrawingType to the item at typeCursor in textDrawingTypes
+    set directDrawingType to the item at typeCursor in directDrawingTypes
+    clear pieces
+    append (the string form of textDrawingType's id) to pieces
+    append textDrawingType's name to pieces
+    append (the string form of textDrawingType's parentId) to pieces
+    append (the string form of textDrawingType's phaseFilter) to pieces
+    append (the bim setting text of (textDrawingType's shown's values)) to pieces
+    append (the bim setting text of (textDrawingType's faint's values)) to pieces
+    append (the bim setting text of (textDrawingType's annotations's values)) to pieces
+    print (((the string form of "text drawing type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directDrawingType's id) to pieces
+    append directDrawingType's name to pieces
+    append (the string form of directDrawingType's parentId) to pieces
+    append (the string form of directDrawingType's phaseFilter) to pieces
+    append (the bim setting text of (directDrawingType's shown's values)) to pieces
+    append (the bim setting text of (directDrawingType's faint's values)) to pieces
+    append (the bim setting text of (directDrawingType's annotations's values)) to pieces
+    print (((the string form of "direct drawing type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSheets to textModel's sheets's values
+set directSheets to directModel's sheets's values
+print ((the string form of "text sheets: ") + (the string form of (the length of textSheets))) as a line
+print ((the string form of "direct sheets: ") + (the string form of (the length of directSheets))) as a line
+loop sheetCursor from 0 to the length of textSheets:
+    set textSheet to the item at sheetCursor in textSheets
+    set directSheet to the item at sheetCursor in directSheets
+    clear pieces
+    append (the string form of textSheet's id) to pieces
+    append textSheet's number to pieces
+    append textSheet's name to pieces
+    append (the string form of textSheet's paper) to pieces
+    append (the string form of textSheet's landscape) to pieces
+    append (the string form of (the length of (textSheet's viewports's values))) to pieces
+    if (the length of (textSheet's viewports's values)) > 0:
+        set textViewport to the item at 0 in (textSheet's viewports's values)
+        append (the string form of textViewport's viewId) to pieces
+        append (the string form of (textViewport's centre's x)) to pieces
+        append (the string form of (textViewport's centre's y)) to pieces
+        append (the string form of (textViewport's modelCentre's x)) to pieces
+        append (the string form of (textViewport's modelCentre's y)) to pieces
+    print (((the string form of "text sheet ") + (the string form of sheetCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSheet's id) to pieces
+    append directSheet's number to pieces
+    append directSheet's name to pieces
+    append (the string form of directSheet's paper) to pieces
+    append (the string form of directSheet's landscape) to pieces
+    append (the string form of (the length of (directSheet's viewports's values))) to pieces
+    if (the length of (directSheet's viewports's values)) > 0:
+        set directViewport to the item at 0 in (directSheet's viewports's values)
+        append (the string form of directViewport's viewId) to pieces
+        append (the string form of (directViewport's centre's x)) to pieces
+        append (the string form of (directViewport's centre's y)) to pieces
+        append (the string form of (directViewport's modelCentre's x)) to pieces
+        append (the string form of (directViewport's modelCentre's y)) to pieces
+    print (((the string form of "direct sheet ") + (the string form of sheetCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textBooks to textModel's sheetviews's values
+set directBooks to directModel's sheetviews's values
+print ((the string form of "text books: ") + (the string form of (the length of textBooks))) as a line
+print ((the string form of "direct books: ") + (the string form of (the length of directBooks))) as a line
+loop bookCursor from 0 to the length of textBooks:
+    set textBook to the item at bookCursor in textBooks
+    set directBook to the item at bookCursor in directBooks
+    clear pieces
+    append (the string form of textBook's id) to pieces
+    append textBook's name to pieces
+    append textBook's prefix to pieces
+    append (the string form of textBook's paper) to pieces
+    append (the string form of textBook's landscape) to pieces
+    append (the string form of textBook's contentsId) to pieces
+    append (the string form of (the length of (textBook's pages's values))) to pieces
+    if (the length of (textBook's pages's values)) > 0:
+        append (the string form of (the item at 0 in (textBook's pages's values))) to pieces
+    print (((the string form of "text book ") + (the string form of bookCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directBook's id) to pieces
+    append directBook's name to pieces
+    append directBook's prefix to pieces
+    append (the string form of directBook's paper) to pieces
+    append (the string form of directBook's landscape) to pieces
+    append (the string form of directBook's contentsId) to pieces
+    append (the string form of (the length of (directBook's pages's values))) to pieces
+    if (the length of (directBook's pages's values)) > 0:
+        append (the string form of (the item at 0 in (directBook's pages's values))) to pieces
+    print (((the string form of "direct book ") + (the string form of bookCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# The stairs, the railings and the curtain walls, read from the same texts.
+set pieces to an empty list of a string
+set textStairs to textModel's stairs's values
+set directStairs to directModel's stairs's values
+print ((the string form of "text stairs: ") + (the string form of (the length of textStairs))) as a line
+print ((the string form of "direct stairs: ") + (the string form of (the length of directStairs))) as a line
+loop stairCursor from 0 to the length of textStairs:
+    set textStair to the item at stairCursor in textStairs
+    set directStair to the item at stairCursor in directStairs
+    clear pieces
+    append (the string form of textStair's id) to pieces
+    append (the string form of textStair's levelId) to pieces
+    append (the string form of (textStair's start's x)) to pieces
+    append (the string form of (textStair's start's y)) to pieces
+    append (the string form of (textStair's finish's y)) to pieces
+    append (the string form of textStair's width) to pieces
+    append (the string form of textStair's riserCount) to pieces
+    append textStair's material to pieces
+    print (((the string form of "text stair ") + (the string form of stairCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directStair's id) to pieces
+    append (the string form of directStair's levelId) to pieces
+    append (the string form of (directStair's start's x)) to pieces
+    append (the string form of (directStair's start's y)) to pieces
+    append (the string form of (directStair's finish's y)) to pieces
+    append (the string form of directStair's width) to pieces
+    append (the string form of directStair's riserCount) to pieces
+    append directStair's material to pieces
+    print (((the string form of "direct stair ") + (the string form of stairCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textRailings to textModel's railings's values
+set directRailings to directModel's railings's values
+print ((the string form of "text railings: ") + (the string form of (the length of textRailings))) as a line
+print ((the string form of "direct railings: ") + (the string form of (the length of directRailings))) as a line
+loop railingCursor from 0 to the length of textRailings:
+    set textRailing to the item at railingCursor in textRailings
+    set directRailing to the item at railingCursor in directRailings
+    clear pieces
+    append (the string form of textRailing's id) to pieces
+    append (the string form of textRailing's levelId) to pieces
+    append (the string form of textRailing's hostId) to pieces
+    append (the string form of textRailing's height) to pieces
+    append (the string form of (the length of (textRailing's points's values))) to pieces
+    append (the string form of (the item at 0 in (textRailing's points's values))'s x) to pieces
+    append (the string form of (the item at 1 in (textRailing's points's values))'s y) to pieces
+    append textRailing's material to pieces
+    print (((the string form of "text railing ") + (the string form of railingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directRailing's id) to pieces
+    append (the string form of directRailing's levelId) to pieces
+    append (the string form of directRailing's hostId) to pieces
+    append (the string form of directRailing's height) to pieces
+    append (the string form of (the length of (directRailing's points's values))) to pieces
+    append (the string form of (the item at 0 in (directRailing's points's values))'s x) to pieces
+    append (the string form of (the item at 1 in (directRailing's points's values))'s y) to pieces
+    append directRailing's material to pieces
+    print (((the string form of "direct railing ") + (the string form of railingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textCurtains to textModel's curtains's values
+set directCurtains to directModel's curtains's values
+print ((the string form of "text curtains: ") + (the string form of (the length of textCurtains))) as a line
+print ((the string form of "direct curtains: ") + (the string form of (the length of directCurtains))) as a line
+loop curtainCursor from 0 to the length of textCurtains:
+    set textCurtain to the item at curtainCursor in textCurtains
+    set directCurtain to the item at curtainCursor in directCurtains
+    clear pieces
+    append (the string form of textCurtain's id) to pieces
+    append (the string form of textCurtain's levelId) to pieces
+    append (the string form of (textCurtain's start's x)) to pieces
+    append (the string form of (textCurtain's finish's x)) to pieces
+    append (the string form of textCurtain's height) to pieces
+    append (the string form of textCurtain's bayWidth) to pieces
+    append (the string form of textCurtain's rowHeight) to pieces
+    append textCurtain's material to pieces
+    append (the string form of textCurtain's bulge) to pieces
+    print (((the string form of "text curtain ") + (the string form of curtainCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directCurtain's id) to pieces
+    append (the string form of directCurtain's levelId) to pieces
+    append (the string form of (directCurtain's start's x)) to pieces
+    append (the string form of (directCurtain's finish's x)) to pieces
+    append (the string form of directCurtain's height) to pieces
+    append (the string form of directCurtain's bayWidth) to pieces
+    append (the string form of directCurtain's rowHeight) to pieces
+    append directCurtain's material to pieces
+    append (the string form of directCurtain's bulge) to pieces
+    print (((the string form of "direct curtain ") + (the string form of curtainCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# The phases, the phasings, the building system, the settings and the
+# properties, read from the same texts.
+set pieces to an empty list of a string
+set textPhases to textModel's phases's values
+set directPhases to directModel's phases's values
+print ((the string form of "text phases: ") + (the string form of (the length of textPhases))) as a line
+print ((the string form of "direct phases: ") + (the string form of (the length of directPhases))) as a line
+loop phaseCursor from 0 to the length of textPhases:
+    set textPhase to the item at phaseCursor in textPhases
+    set directPhase to the item at phaseCursor in directPhases
+    print (((the string form of "text phase ") + (the string form of phaseCursor)) + ((the string form of ": ") + ((the string form of textPhase's id) + ((the string form of " ") + textPhase's name)))) as a line
+    print (((the string form of "direct phase ") + (the string form of phaseCursor)) + ((the string form of ": ") + ((the string form of directPhase's id) + ((the string form of " ") + directPhase's name)))) as a line
+set textPhasings to textModel's phasings's values
+set directPhasings to directModel's phasings's values
+print ((the string form of "text phasings: ") + (the string form of (the length of textPhasings))) as a line
+print ((the string form of "direct phasings: ") + (the string form of (the length of directPhasings))) as a line
+loop phasingCursor from 0 to the length of textPhasings:
+    set textPhasing to the item at phasingCursor in textPhasings
+    set directPhasing to the item at phasingCursor in directPhasings
+    clear pieces
+    append (the string form of textPhasing's id) to pieces
+    append (the string form of textPhasing's createdId) to pieces
+    append (the string form of textPhasing's demolishedId) to pieces
+    print (((the string form of "text phasing ") + (the string form of phasingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directPhasing's id) to pieces
+    append (the string form of directPhasing's createdId) to pieces
+    append (the string form of directPhasing's demolishedId) to pieces
+    print (((the string form of "direct phasing ") + (the string form of phasingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSystems to textModel's systems's values
+set directSystems to directModel's systems's values
+print ((the string form of "text systems: ") + (the string form of (the length of textSystems))) as a line
+print ((the string form of "direct systems: ") + (the string form of (the length of directSystems))) as a line
+loop systemCursor from 0 to the length of textSystems:
+    set textSystem to the item at systemCursor in textSystems
+    set directSystem to the item at systemCursor in directSystems
+    clear pieces
+    append (the string form of textSystem's id) to pieces
+    append textSystem's name to pieces
+    append (the string form of textSystem's discipline) to pieces
+    append (the string form of (the length of (textSystem's members's values))) to pieces
+    append (the string form of (the item at 0 in (textSystem's members's values))) to pieces
+    print (((the string form of "text system ") + (the string form of systemCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSystem's id) to pieces
+    append directSystem's name to pieces
+    append (the string form of directSystem's discipline) to pieces
+    append (the string form of (the length of (directSystem's members's values))) to pieces
+    append (the string form of (the item at 0 in (directSystem's members's values))) to pieces
+    print (((the string form of "direct system ") + (the string form of systemCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textSettings to textModel's settings's values
+set directSettings to directModel's settings's values
+print ((the string form of "text settings: ") + (the string form of (the length of textSettings))) as a line
+print ((the string form of "direct settings: ") + (the string form of (the length of directSettings))) as a line
+loop settingCursor from 0 to the length of textSettings:
+    set textSetting to the item at settingCursor in textSettings
+    set directSetting to the item at settingCursor in directSettings
+    clear pieces
+    append (the string form of textSetting's elementId) to pieces
+    append (the string form of textSetting's code) to pieces
+    append (the string form of textSetting's value) to pieces
+    print (((the string form of "text setting ") + (the string form of settingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directSetting's elementId) to pieces
+    append (the string form of directSetting's code) to pieces
+    append (the string form of directSetting's value) to pieces
+    print (((the string form of "direct setting ") + (the string form of settingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textProperties to textModel's properties's values
+set directProperties to directModel's properties's values
+print ((the string form of "text properties: ") + (the string form of (the length of textProperties))) as a line
+print ((the string form of "direct properties: ") + (the string form of (the length of directProperties))) as a line
+loop propertyCursor from 0 to the length of textProperties:
+    set textProperty to the item at propertyCursor in textProperties
+    set directProperty to the item at propertyCursor in directProperties
+    clear pieces
+    append (the string form of textProperty's elementId) to pieces
+    append textProperty's setName to pieces
+    append textProperty's name to pieces
+    append textProperty's valueType to pieces
+    append textProperty's value to pieces
+    print (((the string form of "text property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
+    clear pieces
+    append (the string form of directProperty's elementId) to pieces
+    append directProperty's setName to pieces
+    append directProperty's name to pieces
+    append directProperty's valueType to pieces
+    append directProperty's value to pieces
+    print (((the string form of "direct property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
+free pieces
+
+# The connections, the reusable connection types and the fastener components,
+# restored from the project's connectionsV1 payload.
+set pieces to an empty list of a string
+set textConnections to textModel's connections's values
+set directConnections to directModel's connections's values
+print ((the string form of "text connections: ") + (the string form of (the length of textConnections))) as a line
+print ((the string form of "direct connections: ") + (the string form of (the length of directConnections))) as a line
+loop connectionCursor from 0 to the length of textConnections:
+    set textConnection to the item at connectionCursor in textConnections
+    set directConnection to the item at connectionCursor in directConnections
+    set textPart to the item at 0 in (textConnection's additions's values)
+    set directPart to the item at 0 in (directConnection's additions's values)
+    clear pieces
+    append (the string form of textConnection's id) to pieces
+    append (the string form of textConnection's levelId) to pieces
+    append textConnection's name to pieces
+    append (the string form of textConnection's category) to pieces
+    append (the string form of textConnection's style) to pieces
+    append (the string form of (textConnection's origin's x)) to pieces
+    append (the string form of (textConnection's origin's z)) to pieces
+    append (the string form of (the length of (textConnection's members's values))) to pieces
+    append (the string form of (the item at 0 in (textConnection's members's values))'s elementId) to pieces
+    append (the string form of (the item at 1 in (textConnection's members's values))'s end) to pieces
+    append (the string form of textPart's key) to pieces
+    append (the string form of textPart's memberId) to pieces
+    append (the string form of textPart's kind) to pieces
+    append (the string form of textPart's rows) to pieces
+    append (the string form of textPart's columnPitch) to pieces
+    append (the string form of textPart's holeDiameter) to pieces
+    append (the string form of textPart's parameters's grade) to pieces
+    append (the string form of textPart's parameters's nuts) to pieces
+    append (the string form of textPart's parameters's catalogue) to pieces
+    print (((the string form of "text connection ") + (the string form of connectionCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directConnection's id) to pieces
+    append (the string form of directConnection's levelId) to pieces
+    append directConnection's name to pieces
+    append (the string form of directConnection's category) to pieces
+    append (the string form of directConnection's style) to pieces
+    append (the string form of (directConnection's origin's x)) to pieces
+    append (the string form of (directConnection's origin's z)) to pieces
+    append (the string form of (the length of (directConnection's members's values))) to pieces
+    append (the string form of (the item at 0 in (directConnection's members's values))'s elementId) to pieces
+    append (the string form of (the item at 1 in (directConnection's members's values))'s end) to pieces
+    append (the string form of directPart's key) to pieces
+    append (the string form of directPart's memberId) to pieces
+    append (the string form of directPart's kind) to pieces
+    append (the string form of directPart's rows) to pieces
+    append (the string form of directPart's columnPitch) to pieces
+    append (the string form of directPart's holeDiameter) to pieces
+    append (the string form of directPart's parameters's grade) to pieces
+    append (the string form of directPart's parameters's nuts) to pieces
+    append (the string form of directPart's parameters's catalogue) to pieces
+    print (((the string form of "direct connection ") + (the string form of connectionCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textTypes to textModel's connectionTypes's values
+set directTypes to directModel's connectionTypes's values
+print ((the string form of "text connection types: ") + (the string form of (the length of textTypes))) as a line
+print ((the string form of "direct connection types: ") + (the string form of (the length of directTypes))) as a line
+loop typeCursor from 0 to the length of textTypes:
+    set textConnectionType to the item at typeCursor in textTypes
+    set directConnectionType to the item at typeCursor in directTypes
+    set textConnectionTypePart to the item at 0 in (textConnectionType's additions's values)
+    set directConnectionTypePart to the item at 0 in (directConnectionType's additions's values)
+    clear pieces
+    append (the string form of textConnectionType's id) to pieces
+    append textConnectionType's name to pieces
+    append (the string form of textConnectionType's category) to pieces
+    append (the string form of textConnectionType's style) to pieces
+    append (the string form of (the length of (textConnectionType's members's values))) to pieces
+    append (the string form of (the item at 1 in (textConnectionType's members's values))'s elementId) to pieces
+    append (the string form of textConnectionTypePart's key) to pieces
+    append (the string form of textConnectionTypePart's memberId) to pieces
+    append (the string form of textConnectionTypePart's kind) to pieces
+    append (the string form of textConnectionTypePart's parameters's threadLength) to pieces
+    append (the string form of textConnectionTypePart's parameters's catalogue) to pieces
+    print (((the string form of "text connection type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directConnectionType's id) to pieces
+    append directConnectionType's name to pieces
+    append (the string form of directConnectionType's category) to pieces
+    append (the string form of directConnectionType's style) to pieces
+    append (the string form of (the length of (directConnectionType's members's values))) to pieces
+    append (the string form of (the item at 1 in (directConnectionType's members's values))'s elementId) to pieces
+    append (the string form of directConnectionTypePart's key) to pieces
+    append (the string form of directConnectionTypePart's memberId) to pieces
+    append (the string form of directConnectionTypePart's kind) to pieces
+    append (the string form of directConnectionTypePart's parameters's threadLength) to pieces
+    append (the string form of directConnectionTypePart's parameters's catalogue) to pieces
+    print (((the string form of "direct connection type ") + (the string form of typeCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+set textBindings to textModel's fastenerComponents's values
+set directBindings to directModel's fastenerComponents's values
+print ((the string form of "text fastener components: ") + (the string form of (the length of textBindings))) as a line
+print ((the string form of "direct fastener components: ") + (the string form of (the length of directBindings))) as a line
+loop bindingCursor from 0 to the length of textBindings:
+    set textBinding to the item at bindingCursor in textBindings
+    set directBinding to the item at bindingCursor in directBindings
+    clear pieces
+    append (the string form of textBinding's componentId) to pieces
+    append (the string form of textBinding's librarySlot) to pieces
+    append (the string form of textBinding's kind) to pieces
+    append (the string form of textBinding's diameter) to pieces
+    append (the string form of textBinding's length) to pieces
+    append (the string form of textBinding's parameters's grade) to pieces
+    append (the string form of textBinding's parameters's nutClass) to pieces
+    append (the string form of textBinding's parameters's showThread) to pieces
+    append (the string form of textBinding's parameters's catalogue) to pieces
+    print (((the string form of "text fastener component ") + (the string form of bindingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+    clear pieces
+    append (the string form of directBinding's componentId) to pieces
+    append (the string form of directBinding's librarySlot) to pieces
+    append (the string form of directBinding's kind) to pieces
+    append (the string form of directBinding's diameter) to pieces
+    append (the string form of directBinding's length) to pieces
+    append (the string form of directBinding's parameters's grade) to pieces
+    append (the string form of directBinding's parameters's nutClass) to pieces
+    append (the string form of directBinding's parameters's showThread) to pieces
+    append (the string form of directBinding's parameters's catalogue) to pieces
+    print (((the string form of "direct fastener component ") + (the string form of bindingCursor)) + ((the string form of ": ") + (pieces joined with " "))) as a line
+free pieces
+
+# A connection payload line the text parser refuses is refused in its words:
+# a fastener component of a component the document does not have.
+set unboundPayloadDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::project\":{\"next\":2,\"connectionsV1\":\"fastenercomponent 9 3 1 0.016 0.08 0 0 88 0 0 1 8 0 0 0 0 1 0 1\"}}},{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground floor\",\"elevation\":0,\"height\":3}}}]}"
+set fromUnboundPayload to the bim ifcx model of unboundPayloadDocument
+print ((the string form of "unbound fastener component: ") + ((the string form of fromUnboundPayload's valid) + ((the string form of " ") + fromUnboundPayload's message))) as a line
+
+# A fastener's analytic construction is derived display data: it is accepted
+# and left out, as the text route never reads it, and what surrounds it still
+# builds.
+set fastenerDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::project\":{\"next\":2}}},{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground floor\",\"elevation\":0,\"height\":3}}},{\"attributes\":{\"openbim::fastenerCSG\":{\"version\":1,\"parts\":[{\"name\":\"bolt\",\"kind\":2,\"terms\":[{\"primitive\":1,\"operation\":0,\"origin\":[0,0,0],\"axis\":[0,0,1],\"size\":[0.02,0.02,0.06]}]}]}}}]}"
+set fromFastener to the bim ifcx model of fastenerDocument
+print ((the string form of "fastener csg: ") + ((the string form of fromFastener's valid) + ((the string form of " ") + fromFastener's message))) as a line
+print ((the string form of "fastener csg levels: ") + (the string form of (the length of (fromFastener's modelValue's levels's values)))) as a line
+
+# A record kind this module does not build yet is refused by name, not dropped.
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::locknut\":{}}}]}"
+set fromRefused to the bim ifcx model of refusedDocument
+print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
+
+# A malformed outline is refused with the kind it belongs to, in the text
+# parser's words.
+set crossedSlab to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"thickness\":0.2,\"outline\":[[0,0],[1,1],[1,0],[0,1]]}}}]}"
+set fromCrossedSlab to the bim ifcx model of crossedSlab
+print ((the string form of "crossed slab: ") + fromCrossedSlab's message) as a line
+set shortSlab to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"thickness\":0.2,\"outline\":[[0,0],[1,1]]}}}]}"
+set fromShortSlab to the bim ifcx model of shortSlab
+print ((the string form of "short slab: ") + fromShortSlab's message) as a line
+set crossedPlate to the string form of "{\"data\":[{\"attributes\":{\"openbim::slab\":{\"id\":1,\"level\":1,\"type\":9,\"top\":0.0,\"pitch\":0.0,\"heading\":0.0,\"outline\":[[0,0],[1,1],[1,0],[0,1]]}}}]}"
+set fromCrossedPlate to the bim ifcx model of crossedPlate
+print ((the string form of "crossed plate: ") + fromCrossedPlate's message) as a line
+
+# A wall's line comes before its foot and top, as the text parser reads them.
+set shortWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"start\":[0,0],\"finish\":[0,0],\"height\":3,\"bulge\":0}}}]}"
+set fromShortWall to the bim ifcx model of shortWall
+print ((the string form of "short wall: ") + fromShortWall's message) as a line
+set unstartedWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"finish\":[4,0],\"height\":3,\"bulge\":0}}}]}"
+set fromUnstartedWall to the bim ifcx model of unstartedWall
+print ((the string form of "unstarted wall: ") + fromUnstartedWall's message) as a line
+set badTopWall to the string form of "{\"data\":[{\"attributes\":{\"openbim::wall\":{\"id\":1,\"type\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3,\"bulge\":0,\"topLevel\":\"x\"}}}]}"
+set fromBadTopWall to the bim ifcx model of badTopWall
+print ((the string form of "bad top wall: ") + fromBadTopWall's message) as a line
+
+# The new kinds keep the text parser's words: a crossed face, a short
+# connector, an unknown solid kind and a face that names a missing point.
+set crossedFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::sketch\":{\"id\":1,\"level\":1,\"kind\":1,\"height\":0,\"points\":[[0,0],[1,1],[1,0],[0,1]],\"text\":\"\"}}}]}"
+set fromCrossedFace to the bim ifcx model of crossedFace
+print ((the string form of "crossed face: ") + fromCrossedFace's message) as a line
+set shortConnector to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"role\":1,\"connectors\":[[0,0,0,0,0,-1,0.015]]}}}]}"
+set fromShortConnector to the bim ifcx model of shortConnector
+print ((the string form of "short connector: ") + fromShortConnector's message) as a line
+set unknownSolid to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"solids\":[{\"kind\":9,\"operation\":0,\"origin\":[0,0,0],\"size\":[1,1,1],\"angle\":0,\"profile\":[],\"material\":\"timber\"}]}}}]}"
+set fromUnknownSolid to the bim ifcx model of unknownSolid
+print ((the string form of "unknown solid: ") + fromUnknownSolid's message) as a line
+set lostFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::component\":{\"id\":1,\"name\":\"Frame\",\"parts\":[],\"solids\":[{\"kind\":4,\"operation\":0,\"origin\":[0,0,0],\"size\":[0,0,0],\"angle\":0,\"material\":\"generic\",\"points\":[[0,0,0],[1,0,0]],\"faces\":[3,0,1,2]}]}}}]}"
+set fromLostFace to the bim ifcx model of lostFace
+print ((the string form of "lost face: ") + fromLostFace's message) as a line
+
+# The new kinds keep the text parser's words too.
+set thinMesh to the string form of "{\"data\":[{\"attributes\":{\"openbim::mesh\":{\"id\":1,\"level\":1,\"points\":[[0,0,0],[1,0,0]],\"faces\":[3,0,1,0]}}}]}"
+set fromThinMesh to the bim ifcx model of thinMesh
+print ((the string form of "thin mesh: ") + fromThinMesh's message) as a line
+set lostMeshFace to the string form of "{\"data\":[{\"attributes\":{\"openbim::mesh\":{\"id\":1,\"level\":1,\"points\":[[0,0,0],[1,0,0],[0,1,0]],\"faces\":[3,0,1,5]}}}]}"
+set fromLostMeshFace to the bim ifcx model of lostMeshFace
+print ((the string form of "lost mesh face: ") + fromLostMeshFace's message) as a line
+set flatLinear to the string form of "{\"data\":[{\"attributes\":{\"openbim::linear\":{\"id\":1,\"type\":1,\"level\":1,\"start\":[1,1,1],\"finish\":[1,1,1],\"angle\":0}}}]}"
+set fromFlatLinear to the bim ifcx model of flatLinear
+print ((the string form of "flat linear: ") + fromFlatLinear's message) as a line
+set badLinearType to the string form of "{\"data\":[{\"attributes\":{\"openbim::lineartype\":{\"id\":1,\"role\":9,\"width\":0.3,\"depth\":0.3,\"round\":0,\"material\":\"concrete\",\"name\":\"Kolom\"}}}]}"
+set fromBadLinearType to the bim ifcx model of badLinearType
+print ((the string form of "bad linear type: ") + fromBadLinearType's message) as a line
+set lostInstance to the string form of "{\"data\":[{\"attributes\":{\"openbim::instance\":{\"id\":1,\"component\":2,\"level\":1,\"origin\":[1,2]}}}]}"
+set fromLostInstance to the bim ifcx model of lostInstance
+print ((the string form of "lost instance: ") + fromLostInstance's message) as a line
+
+# The spaces, the tags and the views keep the text parser's words too: a space
+# that crosses itself, one without a name and one without height, a tag on a
+# missing element, a view of an unknown kind and views out of order.
+set crossedSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":2.5,\"outline\":[[0,0],[1,1],[1,0],[0,1]],\"name\":\"Kantoor\"}}}]}"
+set fromCrossedSpace to the bim ifcx model of crossedSpace
+print ((the string form of "crossed space: ") + fromCrossedSpace's message) as a line
+set namelessSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":2.5,\"outline\":[[0,0],[1,0],[1,1]],\"name\":\"\"}}}]}"
+set fromNamelessSpace to the bim ifcx model of namelessSpace
+print ((the string form of "nameless space: ") + fromNamelessSpace's message) as a line
+set flatSpace to the string form of "{\"data\":[{\"attributes\":{\"openbim::spaceObject\":{\"id\":1,\"level\":1,\"height\":0,\"outline\":[[0,0],[1,0],[1,1]],\"name\":\"Kantoor\"}}}]}"
+set fromFlatSpace to the bim ifcx model of flatSpace
+print ((the string form of "flat space: ") + fromFlatSpace's message) as a line
+set lostTag to the string form of "{\"data\":[{\"attributes\":{\"openbim::tag\":{\"id\":1,\"element\":9,\"place\":[1,2]}}}]}"
+set fromLostTag to the bim ifcx model of lostTag
+print ((the string form of "lost tag: ") + fromLostTag's message) as a line
+set unknownView to the string form of "{\"data\":[{\"attributes\":{\"openbim::view\":{\"id\":1,\"kind\":9,\"name\":\"Odd\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}}]}"
+set fromUnknownView to the bim ifcx model of unknownView
+print ((the string form of "unknown view: ") + fromUnknownView's message) as a line
+set orderedViews to the string form of "{\"data\":[{\"attributes\":{\"openbim::view\":{\"id\":2,\"kind\":0,\"name\":\"Later\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}},{\"attributes\":{\"openbim::view\":{\"id\":1,\"kind\":0,\"name\":\"Earlier\",\"level\":1,\"detail\":0,\"cut\":1.2,\"scale\":100,\"cropped\":0,\"low\":[0,0],\"high\":[1,1],\"from\":[0,0],\"to\":[0,1],\"shown\":\"1\",\"halftone\":\"0\"}}}]}"
+set fromOrderedViews to the bim ifcx model of orderedViews
+print ((the string form of "ordered views: ") + fromOrderedViews's message) as a line
+
+# The drawing types, the sheets and the books of sheets keep the text parser's
+# words too: a drawing type without a name and two out of order, a sheet without
+# a number and two out of order, a short viewport and a sheet of an unknown
+# paper, a book without a prefix and two out of order, a page that is no whole
+# number and a book of an unknown paper.
+set namelessDrawingType to the string form of "{\"data\":[{\"attributes\":{\"openbim::drawingType\":{\"id\":1,\"parent\":-1,\"phaseFilter\":-1,\"shown\":\"1\",\"halftone\":\"-\",\"annotations\":\"-\"}}}]}"
+set fromNamelessDrawingType to the bim ifcx model of namelessDrawingType
+print ((the string form of "nameless drawing type: ") + fromNamelessDrawingType's message) as a line
+set orderedDrawingTypes to the string form of "{\"data\":[{\"attributes\":{\"openbim::drawingType\":{\"id\":2,\"name\":\"Later\",\"parent\":-1,\"phaseFilter\":-1}}},{\"attributes\":{\"openbim::drawingType\":{\"id\":1,\"name\":\"Earlier\",\"parent\":-1,\"phaseFilter\":-1}}}]}"
+set fromOrderedDrawingTypes to the bim ifcx model of orderedDrawingTypes
+print ((the string form of "ordered drawing types: ") + fromOrderedDrawingTypes's message) as a line
+set unfinishedSheet to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"paper\":2,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromUnnumberedSheet to the bim ifcx model of unfinishedSheet
+print ((the string form of "unnumbered sheet: ") + fromUnnumberedSheet's message) as a line
+set orderedSheets to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":2,\"number\":\"A-102\",\"name\":\"Later\",\"paper\":2,\"landscape\":0,\"viewports\":[]}}},{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Earlier\",\"paper\":2,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromOrderedSheets to the bim ifcx model of orderedSheets
+print ((the string form of "ordered sheets: ") + fromOrderedSheets's message) as a line
+set shortViewport to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Plan\",\"paper\":2,\"landscape\":0,\"viewports\":[[1,0,0,0]]}}}]}"
+set fromShortViewport to the bim ifcx model of shortViewport
+print ((the string form of "short viewport: ") + fromShortViewport's message) as a line
+set badPaperSheet to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheet\":{\"id\":1,\"number\":\"A-101\",\"name\":\"Plan\",\"paper\":5,\"landscape\":0,\"viewports\":[]}}}]}"
+set fromBadPaperSheet to the bim ifcx model of badPaperSheet
+print ((the string form of "bad paper sheet: ") + fromBadPaperSheet's message) as a line
+set unfinishedBook to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"paper\":2,\"landscape\":0,\"pages\":[]}}}]}"
+set fromUnnumberedBook to the bim ifcx model of unfinishedBook
+print ((the string form of "unnumbered book: ") + fromUnnumberedBook's message) as a line
+set orderedBooks to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":2,\"name\":\"Later\",\"prefix\":\"E-\",\"paper\":2,\"landscape\":0,\"pages\":[]}}},{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Earlier\",\"prefix\":\"D-\",\"paper\":2,\"landscape\":0,\"pages\":[]}}}]}"
+set fromOrderedBooks to the bim ifcx model of orderedBooks
+print ((the string form of "ordered books: ") + fromOrderedBooks's message) as a line
+set fractionalPage to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"prefix\":\"D-\",\"paper\":2,\"landscape\":0,\"pages\":[1.5]}}}]}"
+set fromFractionalPage to the bim ifcx model of fractionalPage
+print ((the string form of "fractional page: ") + fromFractionalPage's message) as a line
+set badPaperBook to the string form of "{\"data\":[{\"attributes\":{\"openbim::sheetview\":{\"id\":1,\"name\":\"Detailbook\",\"prefix\":\"D-\",\"paper\":9,\"landscape\":0,\"pages\":[]}}}]}"
+set fromBadPaperBook to the bim ifcx model of badPaperBook
+print ((the string form of "bad paper book: ") + fromBadPaperBook's message) as a line
+
+# The stairs, the railings and the curtain walls keep the text parser's words
+# too: a stair without its risers, two out of order and one on a missing storey,
+# a railing without its host and one of a single point, two out of order and one
+# with a bad point, a curtain without its material and two out of order.
+set unfinishedStair to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2}}}]}"
+set fromUnfinishedStair to the bim ifcx model of unfinishedStair
+print ((the string form of "unfinished stair: ") + fromUnfinishedStair's message) as a line
+set orderedStairs to the string form of "{\"data\":[{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground\",\"elevation\":0,\"height\":3}}},{\"attributes\":{\"openbim::stair\":{\"id\":2,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}},{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":1,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}}]}"
+set fromOrderedStairs to the bim ifcx model of orderedStairs
+print ((the string form of "ordered stairs: ") + fromOrderedStairs's message) as a line
+set lostStairLevel to the string form of "{\"data\":[{\"attributes\":{\"openbim::stair\":{\"id\":1,\"level\":9,\"start\":[0,6],\"finish\":[0,9],\"width\":1.2,\"risers\":16,\"material\":\"concrete\"}}}]}"
+set fromLostStairLevel to the bim ifcx model of lostStairLevel
+print ((the string form of "lost stair level: ") + fromLostStairLevel's message) as a line
+set unfinishedRailing to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}}]}"
+set fromUnfinishedRailing to the bim ifcx model of unfinishedRailing
+print ((the string form of "unfinished railing: ") + fromUnfinishedRailing's message) as a line
+set singlePointRailing to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0]],\"material\":\"steel\"}}}]}"
+set fromSinglePointRailing to the bim ifcx model of singlePointRailing
+print ((the string form of "single point railing: ") + fromSinglePointRailing's message) as a line
+set orderedRailings to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":2,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}},{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[0,1]],\"material\":\"steel\"}}}]}"
+set fromOrderedRailings to the bim ifcx model of orderedRailings
+print ((the string form of "ordered railings: ") + fromOrderedRailings's message) as a line
+set badRailingPoint to the string form of "{\"data\":[{\"attributes\":{\"openbim::railing\":{\"id\":1,\"level\":1,\"host\":0,\"height\":1.0,\"points\":[[0,0],[1,\"x\"]],\"material\":\"steel\"}}}]}"
+set fromBadRailingPoint to the bim ifcx model of badRailingPoint
+print ((the string form of "bad railing point: ") + fromBadRailingPoint's message) as a line
+set unfinishedCurtain to the string form of "{\"data\":[{\"attributes\":{\"openbim::curtain\":{\"id\":1,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5}}}]}"
+set fromUnfinishedCurtain to the bim ifcx model of unfinishedCurtain
+print ((the string form of "unfinished curtain: ") + fromUnfinishedCurtain's message) as a line
+set orderedCurtains to the string form of "{\"data\":[{\"attributes\":{\"openbim::curtain\":{\"id\":2,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}},{\"attributes\":{\"openbim::curtain\":{\"id\":1,\"level\":1,\"start\":[0,0],\"finish\":[4,0],\"height\":3.0,\"bay\":1.0,\"row\":1.5,\"material\":\"glass\"}}}]}"
+set fromOrderedCurtains to the bim ifcx model of orderedCurtains
+print ((the string form of "ordered curtains: ") + fromOrderedCurtains's message) as a line
+
+# The phases, the phasings, the systems, the settings and the properties keep
+# the text parser's words too: a phase without a name and two out of order, a
+# phasing without both its phases, a system without a name, a member that is no
+# number, an unknown discipline, a settings pair that is no pair, and a
+# property line without its lengths.
+set namelessPhase to the string form of "{\"data\":[{\"attributes\":{\"openbim::phase\":{\"id\":1}}}]}"
+set fromNamelessPhase to the bim ifcx model of namelessPhase
+print ((the string form of "nameless phase: ") + fromNamelessPhase's message) as a line
+set orderedPhases to the string form of "{\"data\":[{\"attributes\":{\"openbim::phase\":{\"id\":2,\"name\":\"Later\"}}},{\"attributes\":{\"openbim::phase\":{\"id\":1,\"name\":\"Earlier\"}}}]}"
+set fromOrderedPhases to the bim ifcx model of orderedPhases
+print ((the string form of "ordered phases: ") + fromOrderedPhases's message) as a line
+set unfinishedPhasing to the string form of "{\"data\":[{\"attributes\":{\"openbim::phasing\":{\"element\":1,\"created\":1}}}]}"
+set fromUnfinishedPhasing to the bim ifcx model of unfinishedPhasing
+print ((the string form of "unfinished phasing: ") + fromUnfinishedPhasing's message) as a line
+set namelessSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":3,\"members\":[]}}}]}"
+set fromNamelessSystem to the bim ifcx model of namelessSystem
+print ((the string form of "nameless system: ") + fromNamelessSystem's message) as a line
+set badMemberSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":3,\"members\":[\"x\"],\"name\":\"Air\"}}}]}"
+set fromBadMemberSystem to the bim ifcx model of badMemberSystem
+print ((the string form of "bad member system: ") + fromBadMemberSystem's message) as a line
+set badDisciplineSystem to the string form of "{\"data\":[{\"attributes\":{\"openbim::system\":{\"id\":1,\"discipline\":9,\"members\":[],\"name\":\"Air\"}}}]}"
+set fromBadDisciplineSystem to the bim ifcx model of badDisciplineSystem
+print ((the string form of "bad discipline system: ") + fromBadDisciplineSystem's message) as a line
+set shortSettingPair to the string form of "{\"data\":[{\"attributes\":{\"openbim::settings\":{\"element\":1,\"pairs\":[[1]]}}}]}"
+set fromShortSettingPair to the bim ifcx model of shortSettingPair
+print ((the string form of "short setting pair: ") + fromShortSettingPair's message) as a line
+set shortPropertyLine to the string form of "{\"data\":[{\"attributes\":{\"openbim::properties\":{\"lines\":[\"property 1 3 2\"]}}}]}"
+set fromShortPropertyLine to the bim ifcx model of shortPropertyLine
+print ((the string form of "short property line: ") + fromShortPropertyLine's message) as a line
