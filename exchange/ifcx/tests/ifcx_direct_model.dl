@@ -1057,8 +1057,16 @@ loop propertyCursor from 0 to the length of textProperties:
     print (((the string form of "direct property ") + (the string form of propertyCursor)) + ((the string form of ": ") + (pieces joined with "|"))) as a line
 free pieces
 
+# A fastener's analytic construction is derived display data: it is accepted
+# and left out, as the text route never reads it, and what surrounds it still
+# builds.
+set fastenerDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::project\":{\"next\":2}}},{\"attributes\":{\"openbim::level\":{\"id\":1,\"name\":\"Ground floor\",\"elevation\":0,\"height\":3}}},{\"attributes\":{\"openbim::fastenerCSG\":{\"version\":1,\"parts\":[{\"name\":\"bolt\",\"kind\":2,\"terms\":[{\"primitive\":1,\"operation\":0,\"origin\":[0,0,0],\"axis\":[0,0,1],\"size\":[0.02,0.02,0.06]}]}]}}}]}"
+set fromFastener to the bim ifcx model of fastenerDocument
+print ((the string form of "fastener csg: ") + ((the string form of fromFastener's valid) + ((the string form of " ") + fromFastener's message))) as a line
+print ((the string form of "fastener csg levels: ") + (the string form of (the length of (fromFastener's modelValue's levels's values)))) as a line
+
 # A record kind this module does not build yet is refused by name, not dropped.
-set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::fastenerCSG\":{}}}]}"
+set refusedDocument to the string form of "{\"data\":[{\"attributes\":{\"openbim::locknut\":{}}}]}"
 set fromRefused to the bim ifcx model of refusedDocument
 print ((the string form of "refused kind: ") + ((the string form of fromRefused's valid) + ((the string form of " ") + fromRefused's message))) as a line
 

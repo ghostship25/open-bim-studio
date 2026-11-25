@@ -11,8 +11,11 @@
 # spaces, the tags and the views; then the drawing types, the sheets and their
 # books; then the stairs, the railings and the curtain walls; and then the
 # phases and the phasings, the building systems, the element settings and the
-# element properties. A record kind this module does not build yet is refused
-# by name, so content is never silently dropped.
+# element properties. A fastener's `openbim::fastenerCSG` is accepted and left
+# out: it is the analytic construction a type derives from its native
+# parameters for display, which the text route never reads either. Any other
+# record kind this module does not build yet is refused by name, so content is
+# never otherwise silently dropped.
 #
 # Construction mirrors `the bim model parsed from` rule for rule: ids ascend,
 # a level has a positive height, a wall type has at least one layer of positive
@@ -1353,6 +1356,11 @@ function the bim ifcx model of {a string:content}:
                                 set fault to (add bim ifcx model settings record into (the address of modelValue))
                             else if entry's name = (the string form of "openbim::properties"):
                                 set fault to (add bim ifcx model properties record into (the address of modelValue))
+                            else if entry's name = (the string form of "openbim::fastenerCSG"):
+                                # The type's analytic construction, derived from its
+                                # parameters for display: the text route never reads
+                                # it, so the model leaves it out.
+                                set fault to (the string form of "")
                             else if (the length of entry's name) > (the length of openbimPrefix):
                                 if (the substring of entry's name from 0 spanning (the length of openbimPrefix) bytes) = openbimPrefix:
                                     set fault to ((the string form of "not built yet: ") + entry's name)
